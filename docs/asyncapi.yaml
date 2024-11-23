@@ -1,0 +1,124 @@
+asyncapi: 3.0.0
+info:
+  title: Event Returns - Real-time Updates
+  version: 1.0.0
+  description: WebSocket API dla aplikacji Event Returns
+
+channels:
+  route/option:
+    address: route/option
+    messages:
+      subscribe.message:
+        $ref: '#/components/messages/PassengerOptionMessage'
+    description: Kanał dla powiadomień o możliwości podwiezienia pasażera.
+  route/driver-info:
+    address: route/driver-info
+    messages:
+      subscribe.message:
+        $ref: '#/components/messages/DriverInfoMessage'
+    description: Kanał wysyłający pasażerowi informacje o znalezionym kierowcy.
+
+operations:
+  route/option.subscribe:
+    action: send
+    channel:
+      $ref: '#/channels/route~1option'
+    messages:
+      - $ref: '#/channels/route~1option/messages/subscribe.message'
+  route/driver-info.subscribe:
+    action: send
+    channel:
+      $ref: '#/channels/route~1driver-info'
+    messages:
+      - $ref: '#/channels/route~1driver-info/messages/subscribe.message'
+
+components:
+  messages:
+    PassengerOptionMessage:
+      name: PassengerOption
+      title: Informacja o możliwym podwiezieniu pasażera
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PassengerOption'
+    DriverInfoMessage:
+      name: DriverInfo
+      title: Informacje o kierowcy
+      summary: Informacja o znalezionym kierowcy przesyłana do pasażera.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/DriverInfo'
+
+  schemas:
+    PassengerOption:
+      type: object
+      properties:
+        requestId:
+          type: string
+          format: uuid
+          example: 456e4567-e89b-12d3-a456-426614174001
+        passenger:
+          type: object
+          properties:
+            name:
+              type: string
+              example: John Doe
+            email:
+              type: string
+              format: email
+              example: john.doe@example.com
+        timeExtension:
+          type: string
+          format: duration
+          example: PT15M
+        distanceExtension:
+          type: number
+          format: float
+          example: 5.5
+        updatedRoute:
+          $ref: '#/components/schemas/GeoJSON'
+    DriverInfo:
+      type: object
+      properties:
+        driverName:
+          type: string
+          example: "Jane Smith"
+
+    GeoJSON:
+      type: object
+      properties:
+        type:
+          type: string
+          example: FeatureCollection
+        features:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                example: Feature
+              geometry:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: Point
+                  coordinates:
+                    type: array
+                    items:
+                      type: number
+                    example:
+                      - 19.9449799
+                      - 50.0646501
+              properties:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                    example: 123e4567-e89b-12d3-a456-426614174000
+                  role:
+                    type: string
+                    example: driver
+                  location:
+                    type: string
+                    example: 'Kraków, Poland'
