@@ -82,6 +82,9 @@ Lista relacji między kierowcami i pasażerami, które nie są akceptowane.
 
 ### **Tabele związane z trasami**
 
+#### **Roads**
+Tabela stworzona na potrzeby pgRouting. Używana do obliczania tras.
+
 #### **Tabela `EventRoads`**
 Przechowuje pełne trasy wygenerowane dla wydarzeń.
 
