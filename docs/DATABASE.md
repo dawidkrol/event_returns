@@ -14,6 +14,8 @@ Baza danych wykorzystuje następujące rozszerzenia:
 - **pgRouting**: Algorytmy wyznaczania tras, np. Dijkstra, A*.
 - **pgcrypto**: Generowanie UUID dla unikalnych identyfikatorów.
 
+---
+
 ### **Tabele związane z wydarzeniami i użytkownikami**
 
 #### **Tabela `Events`**
@@ -28,8 +30,6 @@ Reprezentuje wydarzenia, dla których organizowane są transporty.
 | `latitude`      | `DECIMAL(9, 6)`  | Szerokość geograficzna miejsca wydarzenia.     |
 | `eventDate`     | `TIMESTAMP`      | Data i czas wydarzenia.                        |
 
----
-
 #### **Tabela `Users`**
 Przechowuje dane użytkowników uczestniczących w wydarzeniach.
 
@@ -40,6 +40,7 @@ Przechowuje dane użytkowników uczestniczących w wydarzeniach.
 | `personName`    | `TEXT`           | Imię i nazwisko użytkownika.                   |
 | `eventId`       | `UUID`           | ID wydarzenia, w którym uczestniczy użytkownik.|
 
+---
 
 ### **Tabele kierowców i pasażerów**
 
