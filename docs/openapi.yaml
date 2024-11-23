@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: Event Returns API
   description: API do współdzielenia powrotów z wydarzeń.
-  version: 1.0.0
+  version: 1.0.1
 paths:
   /events:
     post:
@@ -371,15 +371,3 @@ components:
                     items:
                       type: number
                     example: [19.9449799, 50.0646501]
-              properties:
-                type: object
-                properties:
-                  userId:
-                    type: string
-                    example: "123e4567-e89b-12d3-a456-426614174000"
-                  role:
-                    type: string
-                    example: "driver"
-                  location:
-                    type: string
-                    example: "Kraków, Poland"
