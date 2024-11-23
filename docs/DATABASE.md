@@ -36,7 +36,7 @@ Przechowuje dane użytkowników uczestniczących w wydarzeniach.
 | Kolumna         | Typ               | Opis                                            |
 |------------------|-------------------|------------------------------------------------|
 | `userId`        | `UUID`           | Unikalny identyfikator użytkownika.            |
-| `personEmail`   | `TEXT`           | Adres e-mail użytkownika (unikalny).           |
+| `personEmail`   | `TEXT`           | Adres e-mail użytkownika.           |
 | `personName`    | `TEXT`           | Imię i nazwisko użytkownika.                   |
 | `eventId`       | `UUID`           | ID wydarzenia, w którym uczestniczy użytkownik.|
 
@@ -52,8 +52,8 @@ Reprezentuje kierowców i ich dane transportowe.
 | `userId`                 | `UUID`           | ID użytkownika (klucz obcy do `Users`).        |
 | `longitude`              | `DECIMAL(9, 6)`  | Długość geograficzna destynacji kierowcy.       |
 | `latitude`               | `DECIMAL(9, 6)`  | Szerokość geograficzna destynacji kierowcy.     |
-| `numberOfAvailableSeats` | `INT`            | Liczba dostępnych miejsc w pojeździe.         |
-| `numberOfAvailablePassengers` | `INT`      | Liczba pasażerów obecnie w pojeździe.         |
+| `numberOfAvailableSeats` | `INT`            | Liczba miejsc w pojeździe.         |
+| `numberOfAvailablePassengers` | `INT`      | Aktualna liczba dostępnych miejsc w pojeździe.         |
 | `initialDepartureTime`   | `TIMESTAMP`      | Początkowy czas wyjazdu.                      |
 | `finalDepartureTime`     | `TIMESTAMP`      | Ostateczny czas wyjazdu.                      |
 
@@ -95,6 +95,7 @@ Przechowuje pełne trasy wygenerowane dla wydarzeń.
 | `start_point`     | `GEOMETRY(Point, 4326)` | Punkt początkowy trasy.              |
 | `end_point`       | `GEOMETRY(Point, 4326)` | Punkt końcowy trasy.                 |
 | `length`          | `DECIMAL`            | Długość trasy w kilometrach.          |
+| `travel_time`          | `INTERVAL`            | Czas potrzebny na pokonanie trasy.          |
 
 #### **Tabela `RoadSegments`**
 Reprezentuje odcinki tras, które mogą być współdzielone między różnymi trasami.
@@ -107,6 +108,7 @@ Reprezentuje odcinki tras, które mogą być współdzielone między różnymi t
 | `end_point`       | `GEOMETRY(Point, 4326)` | Punkt końcowy segmentu.              |
 | `path_geometry`   | `GEOMETRY(LineString, 4326)` | Geometria segmentu.           |
 | `segment_length`  | `DECIMAL`            | Długość segmentu w kilometrach.       |
+| `travel_time`          | `INTERVAL`            | Czas potrzebny na pokonanie trasy.          |
 
 #### **Tabela `RoadToSegment`**
 Mapowanie tras (`EventRoads`) na ich segmenty (`RoadSegments`).
