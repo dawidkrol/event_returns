@@ -49,8 +49,8 @@ Reprezentuje kierowców i ich dane transportowe.
 | Kolumna                  | Typ               | Opis                                            |
 |---------------------------|-------------------|------------------------------------------------|
 | `userId`                 | `UUID`           | ID użytkownika (klucz obcy do `Users`).        |
-| `longitude`              | `DECIMAL(9, 6)`  | Aktualna długość geograficzna kierowcy.       |
-| `latitude`               | `DECIMAL(9, 6)`  | Aktualna szerokość geograficzna kierowcy.     |
+| `longitude`              | `DECIMAL(9, 6)`  | Długość geograficzna destynacji kierowcy.       |
+| `latitude`               | `DECIMAL(9, 6)`  | Szerokość geograficzna destynacji kierowcy.     |
 | `numberOfAvailableSeats` | `INT`            | Liczba dostępnych miejsc w pojeździe.         |
 | `numberOfAvailablePassengers` | `INT`      | Liczba pasażerów obecnie w pojeździe.         |
 | `initialDepartureTime`   | `TIMESTAMP`      | Początkowy czas wyjazdu.                      |
@@ -62,8 +62,8 @@ Przechowuje dane pasażerów i ich preferencje transportowe.
 | Kolumna                | Typ               | Opis                                            |
 |-------------------------|-------------------|------------------------------------------------|
 | `userId`              | `UUID`           | ID użytkownika (klucz obcy do `Users`).        |
-| `longitude`           | `DECIMAL(9, 6)`  | Lokalizacja pasażera (długość geograficzna).   |
-| `latitude`            | `DECIMAL(9, 6)`  | Lokalizacja pasażera (szerokość geograficzna). |
+| `longitude`           | `DECIMAL(9, 6)`  | Lokalizacja destynacji pasażera (długość geograficzna).   |
+| `latitude`            | `DECIMAL(9, 6)`  | Lokalizacja destynacji pasażera (szerokość geograficzna). |
 | `numberOfPeople`      | `INT`            | Liczba osób w grupie pasażera.                |
 | `initialDepartureTime`| `TIMESTAMP`      | Preferowany czas wyjazdu początkowego.         |
 | `finalDepartureTime`  | `TIMESTAMP`      | Preferowany czas wyjazdu końcowego.           |
@@ -128,8 +128,7 @@ Mapowanie użytkowników na przypisane im trasy.
 ### Kluczowe cechy bazy danych
 1. **Współdzielenie odcinków tras**: `RoadSegments` umożliwia wielokrotne wykorzystanie tego samego odcinka między różnymi trasami, co minimalizuje powtarzalne obliczenia.
 2. **Modularność tras**: Tabela `RoadToSegment` pozwala na elastyczne definiowanie tras jako sekwencji segmentów.
-3. **Optymalizacja przestrzenna**: Indeksy GIST na geometrii umożliwiają szybkie wyszukiwanie odcinków i tras.
-4. **Elastyczność użytkowników**: Tabele `Drivers`, `Passengers` i `UserRoads` pozwalają na przypisywanie tras zarówno kierowcom, jak i pasażerom, przy jednoczesnym zachowaniu relacji między nimi.
+3. **Elastyczność użytkowników**: Tabele `Drivers`, `Passengers` i `UserRoads` pozwalają na przypisywanie tras zarówno kierowcom, jak i pasażerom, przy jednoczesnym zachowaniu relacji między nimi.
 
 ### Relacje między tabelami
 
@@ -137,30 +136,14 @@ Mapowanie użytkowników na przypisane im trasy.
    - Użytkownicy (`Users`) są powiązani z wydarzeniami (`Events`) za pomocą `eventId`. Każdy użytkownik może uczestniczyć w jednym wydarzeniu, ale jedno wydarzenie może mieć wielu użytkowników.
 
 2. **Kierowcy i pasażerowie**:
-   - Kierowcy (`Drivers`) i pasażerowie (`Passengers`) są specjalizacją użytkowników (`Users`). Tzn. każdy kierowca i pasażer jest również użytkownikiem w systemie.
+   - Kierowcy (`Drivers`) i pasażerowie (`Passengers`) są specjalizacją użytkowników (`Users`).
    - Pasażerowie mogą być przypisani do konkretnego kierowcy za pomocą `driverId`. Relacja ta jest opcjonalna, tzn. pasażer nie musi mieć przypisanego kierowcy.
-   - Dodatkowo, tabela `DriverPassengerBlacklist` umożliwia wzajemne blokowanie kierowców i pasażerów.
+   - Tabela `DriverPassengerBlacklist` umożliwia wzajemne blokowanie kierowców i pasażerów.
 
 3. **Trasy i ich segmenty**:
    - Każda trasa (`EventRoads`) składa się z kilku segmentów (`RoadSegments`), które są fizycznymi odcinkami drogi. 
    - Trasy są powiązane z segmentami w tabeli `RoadToSegment`, gdzie przypisuje się segmenty do trasy w odpowiedniej kolejności (`segment_order`).
-   - Użytkownicy (`Users`) mogą być przypisani do tras (`EventRoads`) za pomocą tabeli `UserRoads`. Tabela ta umożliwia mapowanie tras na użytkowników (np. kierowców lub pasażerów), co pozwala na personalizację przypisań tras do uczestników wydarzenia.
+   - Użytkownicy (`Users`) mogą być przypisani do tras (`EventRoads`) za pomocą tabeli `UserRoads`.
 
 4. **Blacklista**:
    - Kierowcy i pasażerowie mogą być wzajemnie blokowani za pomocą tabeli `DriverPassengerBlacklist`. Blokada ta uniemożliwia im wspólną podróż.
-
-### Podsumowanie
-
-- **Główne tabele**: `Events`, `Users`, `Drivers`, `Passengers`, `EventRoads`, `RoadSegments`.
-- **Relacje**:
-  - `Users` jest centralną tabelą, z której pochodzą zarówno `Drivers`, jak i `Passengers`.
-  - `EventRoads` przechowuje pełne trasy, które składają się z segmentów w tabeli `RoadSegments`.
-  - Tabela `RoadToSegment` umożliwia przypisanie segmentów do tras w odpowiedniej kolejności.
-  - `UserRoads` mapuje użytkowników do tras, pozwalając na przypisanie tras do kierowców i pasażerów.
-  - `DriverPassengerBlacklist` umożliwia blokowanie kierowców i pasażerów przed wspólnymi podróżami.
-  
-- **PostGIS**:
-  - Wszystkie lokalizacje (`Points`) i geometrie tras (`LineStrings`) korzystają z rozszerzenia PostGIS, co umożliwia analizę przestrzenną oraz obliczenia na danych geograficznych.
-
-- **Optymalizacja tras**:
-  - Tabela `RoadSegments` przechowuje segmenty tras, które mogą być
