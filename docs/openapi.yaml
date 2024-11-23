@@ -1,0 +1,373 @@
+openapi: 3.0.0
+info:
+  title: Event Returns API
+  description: API do współdzielenia powrotów z wydarzeń.
+  version: 1.0.1
+paths:
+  /events:
+    post:
+      summary: Stwórz nowe wydarzenie
+      description: Tworzy nowe wydarzenie z lokalizacją i szczegółami.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewEvent'
+      responses:
+        '201':
+          description: Wydarzenie zostało pomyślnie utworzone.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  eventId:
+                    type: string
+                    format: uuid
+        '400':
+          description: Lokalizacja jest niedostępna
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    Location is not avaliable
+
+  /events/{eventId}/people:
+    post:
+      summary: Dodaj uczestników do wydarzenia
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/AddPerson'
+      responses:
+        '200':
+          description: Uczestnicy zostali pomyślnie dodani, a e-maile zostały wysłane.
+
+  /road/{userId}/{role}:
+    post:
+      summary: Wyślij szczegóły drogi
+      description: Wysyła szczegóły drogi jako kierowca lub pasażer.
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [driver, passenger]
+        - name: userId
+          in: path
+          required: true
+          schema: 
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/SendDriver'
+                - $ref: '#/components/schemas/SendPassenger'
+      responses:
+        '200':
+          description: Szczegóły drogi zostały pomyślnie przesłane.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "Success"
+                  geoDetails:
+                    $ref: '#/components/schemas/GeoJSON'
+        '400':
+          description: Lokalizacja jest niedostępna.
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    Location is not avaliable
+        '403':
+          description: Użytkownik już wcześniej ustalił swoją rolę.
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    A role for this user is already inserted
+        '404':
+          description: Nie znaleziono użytkownika z tym userId
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    userId not found
+
+  /road/decision:
+    post:
+      summary: Decyzja oo zabraniu pasażera
+      description: Decyzja kierowcy czy decyduje się zabrać pasażera.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendDecision'
+      responses:
+        '200':
+          description: Decyzja została poprawnie wysłana.
+        '400':
+          description: Decyzja jest niepoprawna.
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    Decision is not valid
+        '404':
+          description: Nie znaleziono requestId albo driverId
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    requestId not found
+
+  /road/{userId}:
+    get:
+      summary: Pobierz szczegóły trasy
+      description: Zwraca szczegóły trasy na podstawie id użytkownika.
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Szczegóły drogi zostały pomyślnie pobrane.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "Success"
+                  geoDetails:
+                    $ref: '#/components/schemas/GeoJSON'
+        '204':
+          description: Użytkownik nie ma jeszcze przypisanej drogi.
+        '404':
+          description: Nie znaleziono użytkownika userId
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    userId not found
+
+  /road/{driverId}/passengers:
+    patch:
+      summary: Zaktualizuj liczbę pasażerów. 
+      description: Zmienia liczbę dostępnych miejsc dla pasażerów.
+      parameters:
+        - name: driverId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                newNumberOfAvailablePassagers:
+                  type: integer
+      responses:
+        '200':
+          description: Zaktualizowano liczbę pasażerów.
+        '400':
+          description: Nie można zmienić liczby pasażerów (np. ponieważ do takiej liczby miejsc przypisano pasażerów)
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    Cannot change number of passegners
+        '404':
+          description: Nie znaleziono driverId.
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    driverId not found
+
+  /road/{passegnerId}/cancel-passenger:
+    post:
+      summary: Anuluj przejazd z aktualnym kierowcą
+      description: Umożliwia pasażerowi rezygnację z przejazdu z kierowcą.
+      parameters:
+        - name: passegnerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Przejazd został anulowany
+        '404':
+          description: Nie znaleziono passegnerId
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    passegnerId not found
+
+  /road/{passegnerId}/cancel-ride:
+    delete:
+      summary: Anuluj przejazd
+      description: Całkowicie anuluj przejazd pasażera
+      parameters:
+        - name: passegnerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Przejazd został anulowany
+        '404':
+          description: Nie znaleziono passegnerId
+          content:
+            application/json:
+              schema:
+                type: string
+                example:
+                    passegnerId not found
+
+components:
+  schemas:
+    SendDriver:
+      type: object
+      properties:
+        longitude:
+          type: number
+          format: decimal
+        latitude:
+          type: number
+          format: decimal
+        numberOfAvailablePassagers:
+          type: integer
+        InitialDepartureTime:
+          type: string
+          format: date-time
+        FinalDepartureTime:
+          type: string
+          format: date-time
+
+    SendPassenger:
+      type: object
+      properties:
+        longitude:
+          type: number
+          format: decimal
+        latitude:
+          type: number
+          format: decimal
+        numberOfPassagers:
+          type: integer
+        InitialDepartureTime:
+          type: string
+          format: date-time
+        FinalDepartureTime:
+          type: string
+          format: date-time
+
+    SendDecision:
+      type: object
+      properties:
+        requestId:
+          type: string
+          format: uuid
+        decision:
+          type: string
+          enum: [accept, reject]
+        driverId:
+          type: string
+          format: uuid
+
+    NewEvent:
+      type: object
+      properties:
+        longitude:
+          type: number
+          format: decimal
+        latitude:
+          type: number
+          format: decimal
+        eventName:
+          type: string
+        eventDescription:
+          type: string
+        eventTime:
+          type: string
+          format: date-time
+
+    AddPerson:
+      type: object
+      properties:
+        personEmail:
+          type: string
+        personName:
+          type: string
+
+    GeoJSON:
+      type: object
+      properties:
+        type:
+          type: string
+          example: "FeatureCollection"
+        features:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                example: "Feature"
+              geometry:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    example: "Point"
+                  coordinates:
+                    type: array
+                    items:
+                      type: number
+                    example: [19.9449799, 50.0646501]
