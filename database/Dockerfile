@@ -12,6 +12,6 @@ RUN apt-get update && apt-get install -y locales && \
 
 COPY init.sql /docker-entrypoint-initdb.d/init.sql
 
-ENV POSTGRES_USER=postgres
-ENV POSTGRES_PASSWORD=postgres
-ENV POSTGRES_DB=routing
+ENV POSTGRES_USER=POSTGRES_USER
+ENV POSTGRES_PASSWORD=POSTGRES_PASSWORD
+ENV POSTGRES_DB=POSTGRES_DB
