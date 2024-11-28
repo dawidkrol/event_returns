@@ -10,4 +10,4 @@
     - [online](https://studio.asyncapi.com/?share=1903cbb4-a2d8-4cf8-9b6c-2311a973e458)
     - [local](docs/asyncapi.yaml)
 5. [Flowchart](docs/FLOWCHART.md)
-
+6. [Requirements](docs/REQUIREMENT.md)
