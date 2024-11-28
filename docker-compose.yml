@@ -21,8 +21,7 @@ services:
       timeout: 5s
       retries: 5
 
-
-  script-runner:
+  map-importer:
     image: debian:bullseye-slim
     depends_on:
       db:
@@ -31,16 +30,11 @@ services:
       POSTGRES_DB: routing
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: db
     volumes:
       - ./Database/load_osm_data.sh:/script.sh
       - ./wait_for_it.sh:/wait-for-it.sh
     entrypoint: ["sh", "-c", "chmod +x /script.sh && /wait-for-it.sh db:5432 -- sh /script.sh"]
-    deploy:
-      resources:
-        limits:
-          memory: 5G
-          cpus: "4.0"
-
        
 volumes:
   postgres_data:
