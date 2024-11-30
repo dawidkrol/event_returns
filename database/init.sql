@@ -166,6 +166,36 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- ==========================================
+-- Funkcja sprawdzajaca istnienie segmentu (check_existing_segment)
+-- ==========================================
+CREATE OR REPLACE FUNCTION check_existing_segment(
+    start_lon DOUBLE PRECISION,
+    start_lat DOUBLE PRECISION,
+    end_lon DOUBLE PRECISION,
+    end_lat DOUBLE PRECISION
+) RETURNS UUID AS
+$$
+DECLARE
+    segment_hash TEXT;
+    existing_segment_uuid UUID;
+BEGIN
+    segment_hash := calculate_segment_hash(start_lon, start_lat, end_lon, end_lat);
+
+    SELECT segmentId INTO existing_segment_uuid
+    FROM RoadSegments
+    WHERE segment_hash = segment_hash
+    LIMIT 1;
+
+    IF FOUND THEN
+        RETURN existing_segment_uuid;
+    ELSE
+        RETURN NULL;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- ==========================================
 -- Funkcja pobierajaca lub tworzaca segment drogi (get_or_create_road)
 -- ==========================================
 CREATE OR REPLACE FUNCTION get_or_create_road(
@@ -183,46 +213,42 @@ CREATE OR REPLACE FUNCTION get_or_create_road(
 ) AS
 $$
 DECLARE
-    existing_segment ROADSEGMENTS%ROWTYPE;
     new_segment_uuid UUID;
-    segment_hash TEXT;
     path_geometry GEOMETRY(LineString, 4326);
     segment_length DECIMAL;
     travel_time_in_seconds DECIMAL;
     travel_time INTERVAL;
 BEGIN
-    segment_hash := calculate_segment_hash(start_lon, start_lat, end_lon, end_lat);
-    
-    SELECT * INTO existing_segment
-    FROM RoadSegments
-    WHERE segment_hash = segment_hash
-    LIMIT 1;
-    
-    IF FOUND THEN
-        RETURN QUERY SELECT
-            existing_segment.segmentId,
-            existing_segment.start_point,
-            existing_segment.end_point,
-            existing_segment.path_geometry,
-            existing_segment.segment_length,
-            existing_segment.travel_time;
-    ELSE
-		WITH route AS (
-		    SELECT 
-		        geom_way,
-		        cost
-		    FROM calculate_route(start_lon, start_lat, end_lon, end_lat) AS r
-		)
-		SELECT 
-		    ST_LineMerge(ST_Union(geom_way)) AS path_geometry,
-		    ST_Length(ST_Transform(ST_Union(geom_way), 4326)) AS segment_length,
-		    SUM(cost) AS travel_time_in_seconds
-		INTO path_geometry, segment_length, travel_time_in_seconds
-		FROM route;
+    new_segment_uuid := check_existing_segment(start_lon, start_lat, end_lon, end_lat);
 
-        
+    IF new_segment_uuid IS NOT NULL THEN
+        RETURN QUERY
+        SELECT
+            segmentId,
+            start_point,
+            end_point,
+            path_geometry,
+            segment_length,
+            travel_time
+        FROM RoadSegments
+        WHERE segmentId = new_segment_uuid;
+    ELSE
+        WITH route AS (
+            SELECT 
+                geom_way,
+                cost
+            FROM calculate_route(start_lon, start_lat, end_lon, end_lat) AS r
+        )
+        SELECT 
+            ST_LineMerge(ST_Union(geom_way)) AS path_geometry,
+            ST_Length(ST_Transform(ST_Union(geom_way), 4326)) AS segment_length,
+            SUM(cost) AS travel_time_in_seconds
+        INTO path_geometry, segment_length, travel_time_in_seconds
+        FROM route;
+
+
         travel_time := make_interval(secs := travel_time_in_seconds);
-        
+
         new_segment_uuid := gen_random_uuid();
         
         BEGIN
@@ -237,7 +263,7 @@ BEGIN
             )
             VALUES (
                 new_segment_uuid,
-                segment_hash,
+                calculate_segment_hash(start_lon, start_lat, end_lon, end_lat),
                 ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326),
                 ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326),
                 path_geometry,
@@ -245,15 +271,18 @@ BEGIN
                 travel_time
             );
         EXCEPTION WHEN unique_violation THEN
-            RETURN QUERY SELECT
-                existing_segment.segmentId,
-                existing_segment.start_point,
-                existing_segment.end_point,
-                existing_segment.path_geometry,
-                existing_segment.segment_length,
-                existing_segment.travel_time;
+            RETURN QUERY
+            SELECT
+                segmentId,
+                start_point,
+                end_point,
+                path_geometry,
+                segment_length,
+                travel_time
+            FROM RoadSegments
+            WHERE segment_hash = calculate_segment_hash(start_lon, start_lat, end_lon, end_lat)
+            LIMIT 1;
         END;
-        
         RETURN QUERY SELECT
             new_segment_uuid,
             ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326) AS start_point,
