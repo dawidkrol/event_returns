@@ -1,6 +1,6 @@
 import express, { Application } from 'express';
 import router from './routes/router';
-import errorHandling from './utils/errorHandler';
+import errorHandling from './library/utils/errorHandler';
 
 const app: Application = express();
 
