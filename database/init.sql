@@ -106,3 +106,161 @@ CREATE TABLE UserRoads (
     userId UUID REFERENCES Users(userId) ON DELETE CASCADE,
     PRIMARY KEY (roadId, userId)
 );
+
+
+-- ==========================================
+-- Funkcja liczaca trasy (calculate_route)
+-- ==========================================
+CREATE OR REPLACE FUNCTION calculate_route(
+    start_lon double precision, 
+    start_lat double precision, 
+    end_lon double precision, 
+    end_lat double precision
+)
+RETURNS TABLE(seq integer, node bigint, edge bigint, cost double precision, agg_cost double precision, geom_way geometry) AS
+$$
+BEGIN
+    RETURN QUERY
+    SELECT pt.seq, pt.node, pt.edge, rd.cost, pt.agg_cost, rd.geom_way
+    FROM pgr_dijkstra(
+        'SELECT id, source, target, cost FROM pl_2po_4pgr',
+        (SELECT source FROM pl_2po_4pgr as pl
+         ORDER BY ST_Distance(
+             ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326),
+             ST_StartPoint(pl.geom_way),
+             true
+         ) ASC
+         LIMIT 1),
+        (SELECT source FROM pl_2po_4pgr as pl
+         ORDER BY ST_Distance(
+             ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326),
+             ST_StartPoint(pl.geom_way),
+             true
+         ) ASC
+         LIMIT 1),
+        directed := false
+    ) AS pt
+    JOIN pl_2po_4pgr rd ON pt.edge = rd.id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ==========================================
+-- Funkcja liczaca hash trasy (calculate_segment_hash)
+-- ==========================================
+CREATE OR REPLACE FUNCTION calculate_segment_hash(
+    start_lon DOUBLE PRECISION,
+    start_lat DOUBLE PRECISION,
+    end_lon DOUBLE PRECISION,
+    end_lat DOUBLE PRECISION
+) RETURNS TEXT AS $$
+DECLARE
+    segment_hash TEXT;
+BEGIN
+    SELECT encode(digest(
+        start_lon::TEXT || start_lat::TEXT || end_lon::TEXT || end_lat::TEXT,
+        'sha256'
+    ), 'hex') INTO segment_hash;
+
+    RETURN segment_hash;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ==========================================
+-- Funkcja pobierajaca lub tworzaca segment drogi (get_or_create_road)
+-- ==========================================
+CREATE OR REPLACE FUNCTION get_or_create_road(
+    start_lon DOUBLE PRECISION,
+    start_lat DOUBLE PRECISION,
+    end_lon DOUBLE PRECISION,
+    end_lat DOUBLE PRECISION
+) RETURNS TABLE(
+    segmentId UUID,
+    start_point GEOMETRY(Point, 4326),
+    end_point GEOMETRY(Point, 4326),
+    path_geometry GEOMETRY(LineString, 4326),
+    segment_length DECIMAL,
+    travel_time INTERVAL
+) AS
+$$
+DECLARE
+    existing_segment ROADSEGMENTS%ROWTYPE;
+    new_segment_uuid UUID;
+    segment_hash TEXT;
+    path_geometry GEOMETRY(LineString, 4326);
+    segment_length DECIMAL;
+    travel_time_in_seconds DECIMAL;
+    travel_time INTERVAL;
+BEGIN
+    segment_hash := calculate_segment_hash(start_lon, start_lat, end_lon, end_lat);
+    
+    SELECT * INTO existing_segment
+    FROM RoadSegments
+    WHERE segment_hash = segment_hash
+    LIMIT 1;
+    
+    IF FOUND THEN
+        RETURN QUERY SELECT
+            existing_segment.segmentId,
+            existing_segment.start_point,
+            existing_segment.end_point,
+            existing_segment.path_geometry,
+            existing_segment.segment_length,
+            existing_segment.travel_time;
+    ELSE
+		WITH route AS (
+		    SELECT 
+		        geom_way,
+		        cost
+		    FROM calculate_route(start_lon, start_lat, end_lon, end_lat) AS r
+		)
+		SELECT 
+		    ST_LineMerge(ST_Union(geom_way)) AS path_geometry,
+		    ST_Length(ST_Transform(ST_Union(geom_way), 4326)) AS segment_length,
+		    SUM(cost) AS travel_time_in_seconds
+		INTO path_geometry, segment_length, travel_time_in_seconds
+		FROM route;
+
+        
+        travel_time := make_interval(secs := travel_time_in_seconds);
+        
+        new_segment_uuid := gen_random_uuid();
+        
+        BEGIN
+            INSERT INTO RoadSegments (
+                segmentId, 
+                segmentHash, 
+                start_point, 
+                end_point, 
+                path_geometry, 
+                segment_length, 
+                travel_time
+            )
+            VALUES (
+                new_segment_uuid,
+                segment_hash,
+                ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326),
+                ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326),
+                path_geometry,
+                segment_length,
+                travel_time
+            );
+        EXCEPTION WHEN unique_violation THEN
+            RETURN QUERY SELECT
+                existing_segment.segmentId,
+                existing_segment.start_point,
+                existing_segment.end_point,
+                existing_segment.path_geometry,
+                existing_segment.segment_length,
+                existing_segment.travel_time;
+        END;
+        
+        RETURN QUERY SELECT
+            new_segment_uuid,
+            ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326) AS start_point,
+            ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326) AS end_point,
+            path_geometry,
+            segment_length,
+            travel_time;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
