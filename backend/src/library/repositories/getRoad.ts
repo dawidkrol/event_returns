@@ -1,4 +1,4 @@
-import { query } from "../utils/db";
+import { query } from "~/utils/db";
 
 export async function callDatabaseFunction(startLatitude: number, startLongitude: number, endLatitude: number, endLongitude: number) {
   try {
