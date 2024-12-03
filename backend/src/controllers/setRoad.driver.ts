@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
 import { validateDriver } from '~/validators/driver.validator';
 import { checkIfUserExists } from '~/validators/user.validator';
+import { addDriver } from '~/repositories/driver.repository';
 
 export const setRoadDriver = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { userId } = req.params;
@@ -19,5 +20,10 @@ export const setRoadDriver = catchAsync(async (req: Request, res: Response, next
         return res.status(404).json({ error: "User not found" });
     }
 
-    return res.status(201).json({ });
+    const { error: driverAddError } = await addDriver(driverModel!);
+    if (driverAddError) {
+        return res.status(500).json({ error: "Error adding driver" });
+    }
+
+    return res.status(200).json({});
 });

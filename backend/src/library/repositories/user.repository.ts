@@ -6,7 +6,7 @@ export async function addPerson(userModel: User, eventId: string, isOrganizer: b
     try {
         const data = await query(
             `INSERT INTO users (person_email, person_name, event_id, is_organizer)
-            VALUES ($1, $2, $3) RETURNING user_id`,
+            VALUES ($1, $2, $3, $4) RETURNING user_id`,
             [userModel.email, userModel.name, eventId, isOrganizer]
         );
         return { id: data[0].user_id };
@@ -36,7 +36,7 @@ export async function getPeopleByEventId(eventId: string): Promise<WithError<{pe
 export async function getPersonById(personId: string): Promise<WithError<{ user: User}, Error>> {
     try {
         const data = await query(`SELECT * FROM users WHERE user_id = $1`, [personId]);
-        return { ...data[0] };
+        return { user: data[0] };
     } catch (error: any) {
         console.error("Error executing query:", error);
         return { error: error as Error };

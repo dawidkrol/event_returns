@@ -17,9 +17,13 @@ export function validateUser(req: Request): WithError<{ userModel: User }, strin
 }
 
 export async function checkIfUserExists(userID: string): Promise<{ error: string | null }> {
-    const { error } = await getPersonById(userID);
+    const { user, error } = await getPersonById(userID);
     if (error) {
         return { error: "Error fetching user" };
+    }
+    console.log(user);
+    if (!user) {
+        return { error: "User not found" };
     }
     return { error: null };
 }
