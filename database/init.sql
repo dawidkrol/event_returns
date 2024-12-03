@@ -21,6 +21,7 @@ CREATE TABLE users (
     user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     person_email TEXT NOT NULL,
     person_name TEXT NOT NULL,
+    is_organizer BOOLEAN NOT NULL DEFAULT FALSE,
     event_id UUID REFERENCES events(event_id) ON DELETE SET NULL
 );
 

@@ -15,7 +15,7 @@ export const createEvent = catchAsync(async (req: Request, res: Response, next?:
         return res.status(500).json({ error: databaseError });
     }
 
-    const{ error: userDatabaseError, id: userId } = await addPerson(eventModel!.organizer, eventId);
+    const{ error: userDatabaseError, id: userId } = await addPerson(eventModel!.organizer, eventId, true);
     if(databaseError) {
         return res.status(500).json({ error: userDatabaseError });
     }
