@@ -16,6 +16,9 @@ export const query = async (text: string, params?: any[]) => {
   try {
     const res = await client.query(text, params);
     return res.rows;
+  } catch (err) {
+    console.error("Error executing query:", err);
+    throw err as Error;
   } finally {
     client.release();
   }

@@ -19,10 +19,13 @@ CREATE TABLE events (
 -- ==========================================
 CREATE TABLE users (
     user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    person_email TEXT NOT NULL UNIQUE,
+    person_email TEXT NOT NULL,
     person_name TEXT NOT NULL,
     event_id UUID REFERENCES events(event_id) ON DELETE SET NULL
 );
+
+ALTER TABLE IF EXISTS public.users
+    ADD CONSTRAINT users_person_email_userID UNIQUE (person_email, user_id);
 
 -- ==========================================
 -- Tabela kierowców (drivers)

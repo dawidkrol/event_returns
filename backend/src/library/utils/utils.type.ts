@@ -1,0 +1,1 @@
+export type WithError<TObject, TError> = (TObject & { error?: never }) | (Partial<TObject> & { error: TError });
