@@ -15,3 +15,20 @@ export async function addPerson(userModel: User, eventId: string): Promise<WithE
         return { error: error as Error };
     }
 }
+
+export async function getPeopleByEventId(eventId: string): Promise<WithError<{people: User[]}, Error>> {
+    try {
+        const data = await query(`SELECT * FROM users WHERE event_id = $1`, [eventId]);
+        const people = await Promise.all(data.map(async (person: any) => {
+            return {
+                email: person.person_email,
+                name: person.person_name,
+                id: person.user_id
+            } as User;
+        }));
+        return { people };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error as Error };
+    }
+}
