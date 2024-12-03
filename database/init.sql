@@ -68,10 +68,7 @@ CREATE TABLE driver_passenger_blacklist (
 -- ==========================================
 CREATE TABLE event_roads (
     road_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    start_point GEOMETRY(Point, 4326) NOT NULL,
-    end_point GEOMETRY(Point, 4326) NOT NULL,
-    length DECIMAL NOT NULL,
-    travel_time INTERVAL NOT NULL
+    driver_Id UUID REFERENCES drivers(user_id) ON DELETE CASCADE
 );
 
 -- ==========================================
@@ -82,8 +79,8 @@ CREATE TABLE road_segments (
     start_point GEOMETRY(Point, 4326) NOT NULL,
     end_point GEOMETRY(Point, 4326) NOT NULL,
     path_geometry GEOMETRY(LineString, 4326) NOT NULL,
-    segment_length DECIMAL NOT NULL,
-    travel_time INTERVAL NOT NULL
+    segment_length DECIMAL NULL,
+    travel_time INTERVAL NULL
 );
 
 CREATE INDEX ON road_segments USING GIST (path_geometry);
@@ -96,17 +93,10 @@ CREATE INDEX ON road_segments USING GIST (end_point);
 CREATE TABLE road_to_segment (
     road_id UUID REFERENCES event_roads(road_id) ON DELETE CASCADE,
     segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE,
-    segment_order INT NOT NULL,
+    previous_segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE DEFAULT NULL,
+    next_segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE DEFAULT NULL,
+    getting_of_userId UUID REFERENCES users(user_id) ON DELETE SET NULL,
     PRIMARY KEY (road_id, segment_hash)
-);
-
--- ==========================================
--- Tabela przypisania tras do użytkowników (user_roads)
--- ==========================================
-CREATE TABLE user_roads (
-    road_id UUID REFERENCES event_roads(road_id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-    PRIMARY KEY (road_id, user_id)
 );
 
 -- ==========================================
@@ -292,5 +282,45 @@ BEGIN
             segment_length,
             travel_time;
     END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_create_event_road(
+    driver_Id UUID
+) RETURNS UUID AS
+$$
+DECLARE
+    new_road_id UUID;
+BEGIN
+    INSERT INTO event_roads (road_id, driver_Id)
+    VALUES (gen_random_uuid(), driver_Id)
+    RETURNING event_roads.road_id INTO new_road_id;
+
+    RETURN new_road_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_add_first_segment_to_road(
+    v_road_id UUID
+) RETURNS VOID AS
+$$
+DECLARE
+    v_driver_Id UUID;
+BEGIN
+    SELECT driver_Id INTO v_driver_Id
+    FROM event_roads
+    WHERE event_roads.road_id = v_road_id;
+
+    INSERT INTO road_to_segment (road_id, segment_hash, getting_of_userId)
+    VALUES (
+        v_road_id,
+        (SELECT segment_hash FROM fn_get_or_create_road(
+            (SELECT latitude FROM events WHERE event_id = (SELECT event_id FROM users WHERE user_id = (SELECT driver_Id FROM event_roads WHERE event_roads.road_id = v_road_id))),
+            (SELECT longitude FROM events WHERE event_id = (SELECT event_id FROM users WHERE user_id = (SELECT driver_Id FROM event_roads WHERE event_roads.road_id = v_road_id))),
+            (SELECT latitude FROM drivers WHERE user_id = v_driver_Id),
+            (SELECT longitude FROM drivers WHERE user_id = v_driver_Id)
+        )),
+        v_driver_Id
+    );
 END;
 $$ LANGUAGE plpgsql;
