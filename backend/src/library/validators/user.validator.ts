@@ -16,10 +16,10 @@ export function validateUser(req: Request): WithError<{ userModel: User }, strin
     };
 }
 
-export async function checkIfUserExists(userID: string): Promise<string | null> {
+export async function checkIfUserExists(userID: string): Promise<{ error: string | null }> {
     const { error } = await getPersonById(userID);
     if (error) {
-        return "Error fetching user";
+        return { error: "Error fetching user" };
     }
-    return null;
+    return { error: null };
 }

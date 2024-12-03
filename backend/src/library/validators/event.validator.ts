@@ -25,10 +25,10 @@ export function validateEvent(req: Request): WithError<{ eventModel: Event }, st
     };
 }
 
-export async function checkIfEventExists(eventId: string): Promise<string | null> {
+export async function checkIfEventExists(eventId: string): Promise<{ error: string | null}> {
     const { error } = await getEventById(eventId);
     if (error) {
-        return "Error fetching event";
+        return { error: "Error fetching event" };
     }
-    return null;
+    return { error: null };
 }

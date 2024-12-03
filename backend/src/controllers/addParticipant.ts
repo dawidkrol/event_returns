@@ -15,8 +15,8 @@ export const addParticipant = catchAsync(async (req: Request, res: Response, nex
         return res.status(400).json({ error });
     }
 
-    const eventError = await checkIfEventExists(eventId as string);
-    if(eventError) {
+    const { error: eventNotExistError } = await checkIfEventExists(eventId as string);
+    if(eventNotExistError) {
         return res.status(404).json({ error: "Event not found" });
     }
 
