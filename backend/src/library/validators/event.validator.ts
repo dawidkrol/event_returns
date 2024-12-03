@@ -1,6 +1,7 @@
 import { WithError } from "~/utils/utils.type";
 import { Request } from "express";
 import { Event } from "~/models/event.model";
+import { getEventById } from "~/repositories/event.repository";
 
 export function validateEvent(req: Request): WithError<{ eventModel: Event }, string> {
     const { eventName, eventDescription, longitude, latitude, eventDate, organizer } = req.body;
@@ -22,4 +23,12 @@ export function validateEvent(req: Request): WithError<{ eventModel: Event }, st
             }
         }
     };
+}
+
+export async function checkIfEventExists(eventId: string): Promise<string | null> {
+    const { error } = await getEventById(eventId);
+    if (error) {
+        return "Error fetching event";
+    }
+    return null;
 }

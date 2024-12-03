@@ -15,3 +15,13 @@ export async function createEvent(eventModel: Event): Promise<WithError<{ id: st
         return { error: error as Error };
     }
 }
+
+export async function getEventById(eventId: string): Promise<WithError<{ event: Event }, Error>> {
+    try {
+        const data = await query(`SELECT * FROM events WHERE event_id = $1`, [eventId]);
+        return { event: data[0] };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error as Error };
+    }
+}

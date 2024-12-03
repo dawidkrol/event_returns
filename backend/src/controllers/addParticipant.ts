@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
 import { validateUser } from '~/validators/user.validator';
 import { addPerson } from '~/repositories/user.repository';
+import { checkIfEventExists } from '~/validators/event.validator';
 
 export const addParticipant = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { eventId } = req.params;
@@ -12,6 +13,11 @@ export const addParticipant = catchAsync(async (req: Request, res: Response, nex
     const { userModel, error } = validateUser(req);
     if (error) {
         return res.status(400).json({ error });
+    }
+
+    const eventError = await checkIfEventExists(eventId as string);
+    if(eventError) {
+        return res.status(404).json({ error: "Event not found" });
     }
 
     const{ error: databaseError, id } = await addPerson(userModel!, eventId as string);
