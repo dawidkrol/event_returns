@@ -324,3 +324,61 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_get_passenger_route(
+    v_road_id UUID,
+    v_passenger_id UUID
+) RETURNS GEOMETRY AS
+$$
+DECLARE
+    current_segment_hash TEXT;
+    passenger_segment_hash TEXT;
+    aggregated_geometry GEOMETRY(LineString, 4326);
+BEGIN
+    SELECT segment_hash INTO passenger_segment_hash
+    FROM road_to_segment
+    WHERE road_id = v_road_id
+      AND getting_of_userId = v_passenger_id;
+
+    IF passenger_segment_hash IS NULL THEN
+        RAISE EXCEPTION 'Passenger or their segment not found for the given road_id';
+    END IF;
+
+    SELECT segment_hash INTO current_segment_hash
+    FROM road_to_segment
+    WHERE road_id = v_road_id
+      AND previous_segment_hash IS NULL;
+
+    IF current_segment_hash IS NULL THEN
+        RAISE EXCEPTION 'No starting segment found for the given road_id';
+    END IF;
+
+    aggregated_geometry := NULL;
+
+    LOOP
+        aggregated_geometry := 
+            CASE 
+                WHEN aggregated_geometry IS NULL THEN
+                    (SELECT path_geometry FROM road_segments WHERE segment_hash = current_segment_hash)
+                ELSE
+                    ST_Union(aggregated_geometry, (SELECT path_geometry FROM road_segments WHERE segment_hash = current_segment_hash))
+            END;
+
+        IF current_segment_hash = passenger_segment_hash THEN
+            EXIT;
+        END IF;
+
+        SELECT next_segment_hash INTO current_segment_hash
+        FROM road_to_segment
+        WHERE road_id = v_road_id
+          AND segment_hash = current_segment_hash;
+
+        IF current_segment_hash IS NULL THEN
+            RAISE EXCEPTION 'Incomplete road structure: segment chain is broken before reaching passenger segment';
+        END IF;
+    END LOOP;
+
+    RETURN aggregated_geometry;
+END;
+$$ LANGUAGE plpgsql;
+
