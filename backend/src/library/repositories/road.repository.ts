@@ -34,7 +34,7 @@ export async function getRoadsByUserId(roadId: string, userId: string): Promise<
         const result = await query(
             `SELECT ST_AsGeoJSON(fn_get_passenger_route) AS geometry FROM fn_get_passenger_route($1, $2);
             `,
-            [userId, roadId]
+            [roadId, userId]
         );
         const geoJSON = {
           type: "FeatureCollection",
