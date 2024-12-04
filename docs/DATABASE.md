@@ -4,7 +4,7 @@ Poniżej znajduje się opis bazy danych zaprojektowanej do obsługi aplikacji do
 
 ---
 ### Schemat
-![Databse schema](img/db-schema.png)
+![Databse schema](img/db-schema-v2.png)
 
 ---
 
