@@ -45,7 +45,7 @@ export const setRoadDriver = catchAsync(async (req: Request, res: Response, next
         return res.status(500).json({ error: "Error adding segment" });
     }
 
-    const { road, error: roadNotFoundError } = await getRoadByUserId(roadId!, userId);
+    const { road, error: roadNotFoundError } = await getRoadByUserId(userId);
     if (roadNotFoundError) {
         return res.status(404).json({ error: "Road not found" });
     }

@@ -315,10 +315,10 @@ BEGIN
     VALUES (
         v_road_id,
         (SELECT segment_hash FROM fn_get_or_create_road(
-            (SELECT latitude FROM events WHERE event_id = (SELECT event_id FROM users WHERE user_id = (SELECT driver_Id FROM event_roads WHERE event_roads.road_id = v_road_id))),
             (SELECT longitude FROM events WHERE event_id = (SELECT event_id FROM users WHERE user_id = (SELECT driver_Id FROM event_roads WHERE event_roads.road_id = v_road_id))),
-            (SELECT latitude FROM drivers WHERE user_id = v_driver_Id),
-            (SELECT longitude FROM drivers WHERE user_id = v_driver_Id)
+            (SELECT latitude FROM events WHERE event_id = (SELECT event_id FROM users WHERE user_id = (SELECT driver_Id FROM event_roads WHERE event_roads.road_id = v_road_id))),
+            (SELECT longitude FROM drivers WHERE user_id = v_driver_Id),
+            (SELECT latitude FROM drivers WHERE user_id = v_driver_Id)
         )),
         v_driver_Id
     );
@@ -326,15 +326,19 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION fn_get_passenger_route(
-    v_road_id UUID,
     v_passenger_id UUID
 ) RETURNS GEOMETRY AS
 $$
 DECLARE
     current_segment_hash TEXT;
     passenger_segment_hash TEXT;
+    v_road_id UUID;
     aggregated_geometry GEOMETRY(LineString, 4326);
 BEGIN
+    SELECT road_id INTO v_road_id
+    FROM road_to_segment
+    WHERE getting_of_userId = v_passenger_id;
+
     SELECT segment_hash INTO passenger_segment_hash
     FROM road_to_segment
     WHERE road_id = v_road_id
