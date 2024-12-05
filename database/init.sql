@@ -206,57 +206,81 @@ CREATE OR REPLACE FUNCTION fn_get_or_create_road(
 ) AS
 $$
 DECLARE
-    new_segment_hash TEXT;
+    v_segment_hash TEXT;
+    path_geometry GEOMETRY(LineString, 4326);
+    segment_length DECIMAL;
+    travel_time_in_seconds DECIMAL;
+    travel_time INTERVAL;
 BEGIN
-    new_segment_hash := fn_check_existing_segment(start_lon, start_lat, end_lon, end_lat);
+    v_segment_hash := fn_check_existing_segment(start_lon, start_lat, end_lon, end_lat);
 
-    IF new_segment_hash IS NOT NULL THEN
+    IF v_segment_hash IS NOT NULL THEN
         RETURN QUERY
         SELECT
-            segment_hash,
-            start_point,
-            end_point,
-            path_geometry,
-            segment_length,
-            travel_time
-        FROM road_segments
-        WHERE segment_hash = new_segment_hash;
+            rs.segment_hash,
+            rs.start_point,
+            rs.end_point,
+            rs.path_geometry,
+            rs.segment_length,
+            rs.travel_time
+        FROM road_segments rs
+        WHERE rs.segment_hash = v_segment_hash;
     ELSE
-        RETURN QUERY
         WITH route AS (
             SELECT 
-                ST_LineMerge(ST_Union(geom_way)) AS path_geometry,
-                ST_Length(ST_Union(geom_way)) AS segment_length,
-                SUM(cost) * 3600 AS travel_time_in_seconds
+                geom_way,
+                cost
             FROM fn_calculate_route(start_lon, start_lat, end_lon, end_lat)
-        ),
-        inserted AS (
+        )
+        SELECT 
+            ST_LineMerge(ST_Union(geom_way)) AS path_geometry,
+            ST_Length(ST_Union(geom_way)) AS segment_length,
+            SUM(cost) * 3600 AS travel_time_in_seconds
+        INTO path_geometry, segment_length, travel_time_in_seconds
+        FROM route;
+
+        travel_time := make_interval(secs := travel_time_in_seconds);
+
+        v_segment_hash := fn_calculate_segment_hash(start_lon, start_lat, end_lon, end_lat);
+
+        BEGIN
             INSERT INTO road_segments (
-                segment_hash,
-                start_point,
-                end_point,
+                segment_hash, 
+                start_point, 
+                end_point, 
+                path_geometry, 
+                segment_length, 
+                travel_time
+            )
+            VALUES (
+                v_segment_hash,
+                ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326),
+                ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326),
                 path_geometry,
                 segment_length,
                 travel_time
-            )
+            );
+        EXCEPTION WHEN unique_violation THEN
+            RETURN QUERY
             SELECT
-                fn_calculate_segment_hash(start_lon, start_lat, end_lon, end_lat) AS segment_hash,
-                ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326),
-                ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326),
-                route.path_geometry,
-                route.segment_length,
-                make_interval(secs := route.travel_time_in_seconds)
-            FROM route
-            RETURNING *
-        )
-        SELECT
-            segment_hash,
-            start_point,
-            end_point,
+                rs.segment_hash,
+                rs.start_point,
+                rs.end_point,
+                rs.path_geometry,
+                rs.segment_length,
+                rs.travel_time
+            FROM road_segments rs
+            WHERE rs.segment_hash = v_segment_hash
+            LIMIT 1;
+        END;
+
+        RETURN QUERY SELECT
+            v_segment_hash,
+            ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326) AS start_point,
+            ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326) AS end_point,
             path_geometry,
             segment_length,
-            travel_time
-        FROM inserted;
+            travel_time;
     END IF;
 END;
 $$ LANGUAGE plpgsql;
