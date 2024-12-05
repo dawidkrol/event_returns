@@ -3,6 +3,7 @@ import { catchAsync } from '../library/utils/catchAsync';
 import { validateEvent } from '~/validators/event.validator';
 import { createEvent as repoCreateEvent } from '~/repositories/event.repository';
 import { addPerson } from '~/repositories/user.repository';
+import { checkIfPointIsAvailable } from '~/repositories/road.repository';
 
 export const createEvent = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { eventModel, error } = validateEvent(req);
@@ -10,12 +11,20 @@ export const createEvent = catchAsync(async (req: Request, res: Response, next?:
         return res.status(400).json({ error });
     }
 
+    const { isAvailable, error: isAvaliableError } = await checkIfPointIsAvailable(eventModel!.longitude, eventModel!.latitude);
+    if(isAvaliableError) {
+        return res.status(500).json({ error: isAvaliableError });
+    }
+    if(!isAvailable) {
+        return res.status(400).json({ error: "Location is not avaliable" });
+    }
+
     const{ error: databaseError, id: eventId } = await repoCreateEvent(eventModel!);
     if(databaseError) {
         return res.status(500).json({ error: databaseError });
     }
 
-    const{ error: userDatabaseError, id: userId } = await addPerson(eventModel!.organizer, eventId);
+    const{ error: userDatabaseError, id: userId } = await addPerson(eventModel!.organizer, eventId, true);
     if(databaseError) {
         return res.status(500).json({ error: userDatabaseError });
     }

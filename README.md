@@ -11,3 +11,4 @@
     - [local](docs/asyncapi.yaml)
 5. [Flowchart](docs/FLOWCHART.md)
 6. [Requirements](docs/REQUIREMENT.md)
+7. [Uruchomienie](docs/LOCAL-START.md)
