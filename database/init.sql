@@ -382,3 +382,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION check_point_in_table(
+    lon DOUBLE PRECISION,
+    lat DOUBLE PRECISION,
+    tolerance DOUBLE PRECISION DEFAULT 0.0005
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    point_exists BOOLEAN;
+BEGIN
+    SELECT EXISTS (
+        SELECT 1
+        FROM pl_2po_4pgr
+        WHERE ST_DWithin(
+            geom_way,
+            ST_SetSRID(ST_MakePoint(lon, lat), 4326),
+            tolerance
+        )
+    )
+    INTO point_exists;
+
+    RETURN point_exists;
+END;
+$$ LANGUAGE plpgsql;

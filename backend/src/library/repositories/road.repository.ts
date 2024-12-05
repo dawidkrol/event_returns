@@ -54,3 +54,18 @@ export async function getRoadByUserId(roadId: string, userId: string): Promise<W
       return { error: error.message };
   }
 }
+
+export async function checkIfPointIsAvailable(longitude: number, latitude: number): Promise<WithError<{isAvailable: boolean}, string>> {
+    try {
+        const result = await query(
+            `SELECT check_point_in_table($1, $2) AS is_avaliable;
+            `,
+            [longitude, latitude]
+        );
+        return { isAvailable: result[0].is_avaliable };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}

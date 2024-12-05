@@ -4,7 +4,7 @@ import { validateDriver } from '~/validators/driver.validator';
 import { checkIfUserExists } from '~/validators/user.validator';
 import { addDriver } from '~/repositories/driver.repository';
 import { addSegmentToDriverRoad, createDriverRoad } from '~/services/driver-road.service';
-import { getRoadByUserId } from '~/repositories/road.repository';
+import { checkIfPointIsAvailable, getRoadByUserId } from '~/repositories/road.repository';
 
 export const setRoadDriver = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { userId } = req.params;
@@ -20,6 +20,14 @@ export const setRoadDriver = catchAsync(async (req: Request, res: Response, next
     const { error } = await checkIfUserExists(userId);
     if (error) {
         return res.status(404).json({ error: "User not found" });
+    }
+
+    const { isAvailable, error: isAvailableError } = await checkIfPointIsAvailable(driverModel!.longitude, driverModel!.latitude);
+    if(isAvailableError) {
+        return res.status(500).json({ error: isAvailableError });
+    }
+    if(!isAvailable) {
+        return res.status(400).json({ error: "Location is not avaliable" });
     }
 
     const { error: driverAddError } = await addDriver(driverModel!);
