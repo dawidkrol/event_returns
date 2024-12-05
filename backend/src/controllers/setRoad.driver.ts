@@ -4,7 +4,7 @@ import { validateDriver } from '~/validators/driver.validator';
 import { checkIfUserExists } from '~/validators/user.validator';
 import { addDriver } from '~/repositories/driver.repository';
 import { addSegmentToDriverRoad, createDriverRoad } from '~/services/driver-road.service';
-import { getRoadsByUserId } from '~/repositories/road.repository';
+import { getRoadByUserId } from '~/repositories/road.repository';
 
 export const setRoadDriver = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { userId } = req.params;
@@ -37,7 +37,7 @@ export const setRoadDriver = catchAsync(async (req: Request, res: Response, next
         return res.status(500).json({ error: "Error adding segment" });
     }
 
-    const { road, error: roadNotFoundError } = await getRoadsByUserId(roadId!, userId);
+    const { road, error: roadNotFoundError } = await getRoadByUserId(roadId!, userId);
     if (roadNotFoundError) {
         return res.status(404).json({ error: "Road not found" });
     }

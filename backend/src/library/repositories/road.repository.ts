@@ -29,7 +29,7 @@ export async function getRoadById(roadId: string): Promise<WithError<{road: { ty
     }
 }
 
-export async function getRoadsByUserId(roadId: string, userId: string): Promise<WithError<{road: { type: string; features: any }}, string>> {
+export async function getRoadByUserId(roadId: string, userId: string): Promise<WithError<{road: { type: string; features: any }}, string>> {
     try {
         const result = await query(
             `SELECT ST_AsGeoJSON(fn_get_passenger_route) AS geometry FROM fn_get_passenger_route($1, $2);
