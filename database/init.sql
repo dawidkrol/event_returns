@@ -112,7 +112,7 @@ CREATE TABLE temporary_road_to_segment (
     modified_by_passenger_id UUID NOT NULL REFERENCES passengers(user_id),
     status TEXT CHECK (status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT NOW(),
-    PRIMARY KEY (road_id, segment_hash)
+    PRIMARY KEY (temp_road_id, temp_segment_hash)
 );
 
 -- ==========================================
@@ -428,7 +428,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION fn_find_nearest_driver_route_for_passenger(
     v_passenger_id UUID
-) RETURNS TABLE(
+) RETURNS TABLE (
     driver_id UUID,
     road_id UUID,
     nearest_distance DOUBLE PRECISION,
@@ -501,16 +501,16 @@ DECLARE
     v_start_lat DOUBLE PRECISION;
     v_end_lon DOUBLE PRECISION;
     v_end_lat DOUBLE PRECISION;
-	v_road_id UUID;
+    v_road_id UUID;
 BEGIN
     SELECT longitude, latitude
     INTO v_passenger_lon, v_passenger_lat
     FROM passengers
     WHERE user_id = v_passenger_id;
 
-	SELECT road_id
-	INTO v_road_id
-	FROM fn_find_nearest_driver_route_for_passenger(v_passenger_id);
+    SELECT road_id
+    INTO v_road_id
+    FROM fn_find_nearest_driver_route_for_passenger(v_passenger_id);
 
     IF v_passenger_lon IS NULL OR v_passenger_lat IS NULL THEN
         RAISE EXCEPTION 'Passenger not found';
@@ -545,7 +545,8 @@ BEGIN
         previous_segment_hash, 
         next_segment_hash,
         modified_by_passenger_id, 
-        status
+        status,
+        getting_of_userid
     )
     VALUES (
         v_road_id, 
@@ -554,7 +555,8 @@ BEGIN
         NULL,
         v_next_segment_hash,
         v_passenger_id,
-        'pending'
+        'pending',
+        v_passenger_id
     );
 
     INSERT INTO temporary_road_to_segment (
@@ -564,7 +566,8 @@ BEGIN
         previous_segment_hash, 
         next_segment_hash,
         modified_by_passenger_id, 
-        status
+        status,
+        getting_of_userid
     )
     VALUES (
         v_road_id, 
@@ -573,7 +576,8 @@ BEGIN
         v_new_segment_hash,
         NULL,
         v_passenger_id,
-        'pending'
+        'pending',
+        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id)
     );
 
     RETURN v_road_id;
