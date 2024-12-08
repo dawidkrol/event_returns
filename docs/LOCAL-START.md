@@ -58,8 +58,28 @@ Body:
 }
 ```
 
+---
+#### POST `/api/road/{{userId}}/passenger`
+ustawienie uczestnika jako pasażera i zwrócenie trasy
+
+Body:
+```
+{
+ "longitude": 19.9077018,
+ "latitude": 50.0454755,
+ "numberOfPeople": 1,
+ "initialDepartureTime": "1975-08-19T23:15:30.000Z",
+ "finalDepartureTime": "1975-08-19T23:15:31.000Z"
+}
+```
+
 #### GET `/api/road/{{userId}}`
 zwrócenie trasy użytkownika
+
+---
+
+#### GET `/api/road/{{userId}}/temp`
+zwrócenie 'niezatwierdzonej' trasy użytkownika
 
 ---
 
