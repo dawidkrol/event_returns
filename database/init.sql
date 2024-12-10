@@ -567,23 +567,25 @@ DECLARE
     v_passenger_lon DOUBLE PRECISION;
     v_passenger_lat DOUBLE PRECISION;
 BEGIN
+    -- Fetch start and end points of the segment
     SELECT rs.start_point, rs.end_point
     INTO v_start_point, v_end_point
     FROM road_segments rs
     WHERE rs.segment_hash = v_segment_id;
 
+    -- Fetch passenger's latitude and longitude
     SELECT p.longitude, p.latitude
     INTO v_passenger_lon, v_passenger_lat
     FROM passengers p
     WHERE p.user_id = v_passenger_id;
 
-    SELECT segment_hash into v_previous_segment_hash FROM fn_get_or_create_road(
+    SELECT fn1.segment_hash into v_previous_segment_hash FROM fn_get_or_create_road(
         ST_X(v_start_point), ST_Y(v_start_point), v_passenger_lon, v_passenger_lat
-    );
+    ) fn1;
 
-    SELECT segment_hash into v_next_segment_hash FROM fn_get_or_create_road(
+    SELECT fn2.segment_hash into v_next_segment_hash FROM fn_get_or_create_road(
         v_passenger_lon, v_passenger_lat, ST_X(v_end_point), ST_Y(v_end_point)
-    );
+    ) fn2;
 
     RETURN QUERY
     (SELECT
