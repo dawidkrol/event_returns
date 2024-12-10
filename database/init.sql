@@ -652,11 +652,13 @@ BEGIN
         UPDATE road_to_segment
         SET next_segment_hash = v_new_segment_hash_1
         WHERE segment_hash = org_previous_segment_hash;
-
+    END IF;
+    
     IF org_next_segment_hash IS NOT NULL THEN
         UPDATE road_to_segment
         SET previous_segment_hash = v_new_segment_hash_2
         WHERE segment_hash = org_next_segment_hash;
+    END IF;
 
     RETURN v_road_id;
 END;
