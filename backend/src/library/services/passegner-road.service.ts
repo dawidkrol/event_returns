@@ -14,7 +14,6 @@ export async function createPassengerRoad(
     if (!roadId) {
         return { error: "Road not found" };
     }
-    console.log(`optimal road: ${roadId}`);
 
     const { roadSegments, error: getRoadToSegmentsError } = await getRoadToSegments(roadId!);
     if (getRoadToSegmentsError) {
@@ -35,25 +34,22 @@ export async function createPassengerRoad(
         if (!segment) {
             return { error: "Segment not found" };
         }
-        console.log(`segment: ${segment.segmentHash}`);
 
-        const { segments: newSegemnts, error } = await setPassengerInSegment(passengerId, currentSegment.segmentHash);
+        const { segments: newSegments, error } = await setPassengerInSegment(passengerId, currentSegment.segmentHash);
         if (error) {
             return {error};
         }
-        if (!newSegemnts) {
+        if (!newSegments) {
             return { error: "Segments not found" };
         }
-        console.log(`new segments: ${JSON.stringify(newSegemnts)}`);
 
-        const cost = Array.from(newSegemnts.values()).reduce((prev, curr) => prev + curr.segment.cost.totalMilliseconds, 0);
+        const cost = Array.from(newSegments.values()).reduce((prev, curr) => prev + curr.segment.cost.totalMilliseconds, 0);
         segment_cost_map.set(
             currentSegment.segmentHash,
             {
             costDifference: cost - segment.cost.totalMilliseconds,
-            newSegments: newSegemnts
+            newSegments: newSegments
         });
-        console.log(`cost: ${cost}`);
 
         currentSegment = roadSegments.find(segment => segment.previousSegmentHash === currentSegment?.segmentHash) || undefined;
     }
