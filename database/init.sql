@@ -618,7 +618,7 @@ DECLARE
 BEGIN
     SELECT road_id, next_segment_hash, previous_segment_hash
     INTO v_road_id, org_next_segment_hash, org_previous_segment_hash
-    FROM temporary_road_to_segment
+    FROM road_to_segment
     WHERE segment_hash = v_segment_hash;
 
     INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_of_userId, modified_by_passenger_id)
