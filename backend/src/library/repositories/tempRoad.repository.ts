@@ -25,3 +25,28 @@ export async function getTempRoadByUserId(userId: string): Promise<WithError<{ro
       return { error: error.message };
   }
 }
+
+export async function addNewRouteProposition(
+    segmentId_hash: string,
+    newSegment_hash_1: string,
+    newSegment_hash_2: string,
+    passengerId: string
+): Promise<WithError<{roadId: string}, string>> {
+    try {
+        const result = await query(
+            `SELECT add_new_route_proposition($1, $2, $3, $4);
+            `,
+            [
+              segmentId_hash, 
+              newSegment_hash_1,
+              newSegment_hash_2, 
+              passengerId
+            ]
+        );
+        return { roadId: result[0].add_new_route_proposition };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}

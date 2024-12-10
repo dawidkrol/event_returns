@@ -1,3 +1,5 @@
+import { RoadToSegment } from "~/models/road-to-segment.model";
+import { Segment } from "~/models/segment.model";
 import { query } from "~/utils/db";
 import { WithError } from "~/utils/utils.type";
 
@@ -68,3 +70,117 @@ export async function checkIfPointIsAvailable(longitude: number, latitude: numbe
         return { error: error.message };
     }
 }
+
+export async function findNearestDriversRoad(passengerId: string): Promise<WithError<{roadId: string}, string>> {
+    try {
+        const result = await query(
+            `SELECT road_id FROM fn_find_nearest_driver_route_for_passenger($1);
+            `,
+            [passengerId]
+        );
+        return { roadId: result[0].road_id };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function getRoadToSegmentsByRoadId(roadId: string): Promise<WithError<{ roadSegments: RoadToSegment[] }, string>> {
+    try {
+        const result = await query(
+            `SELECT road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_of_userid FROM road_to_segment WHERE road_id = $1;
+            `,
+            [roadId]
+        );
+        return { roadSegments: result.map((row: any) => ({
+            roadId: row.road_id,
+            segmentHash: row.segment_hash,
+            previousSegmentHash: row.previous_segment_hash,
+            nextSegmentHash: row.next_segment_hash,
+            gettingOfUserId: row.getting_of_userid,
+        })) };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function getRoadSegment(segmentHash: string): Promise<WithError<{ segment: Segment }, string>> {
+    try {
+        const result = await query(
+            `SELECT segment_hash, segment_length, travel_time FROM road_segments WHERE segment_hash = $1;
+            `,
+            [segmentHash]
+        );
+        return { segment: {
+            segmentHash: result[0].segment_hash,
+            length: result[0].segment_length,
+            cost: result[0].travel_time,
+        }};
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function setPassengerInRoadSegment(
+  passengerId: string,
+  segmentId: string
+): Promise<WithError<{ segments: Map<number, { segment: Segment }> }, string>> {
+  try {
+    const result = await query(
+      `SELECT * FROM fn_extend_segment_with_passenger($1, $2);`,
+      [passengerId, segmentId]
+    );
+
+    console.log(`result: ${JSON.stringify(result)}`);
+
+    const segmentsMap = new Map<number, { segment: Segment }>();
+
+    console.log("Before loop, result:", result);
+result.forEach((row: any) => {
+  console.log("Processing row:", row);
+
+  const travelTimeMs = 
+    (row.travel_time.minutes || 0) * 60 * 1000 +
+    (row.travel_time.seconds || 0) * 1000 +
+    (row.travel_time.milliseconds || 0);
+
+  console.log("Calculated travelTimeMs:", travelTimeMs);
+
+  const segmentLength = parseFloat(row.segment_length);
+  console.log("Parsed segmentLength:", segmentLength);
+
+  const seq = Number(row.seq);
+  console.log("Parsed seq:", seq);
+
+  segmentsMap.set(seq, {
+    segment: {
+      segmentHash: row.segment_hash,
+      length: segmentLength,
+      cost: {
+        totalMilliseconds: travelTimeMs,
+      },
+    },
+  });
+
+  console.log("Updated segmentsMap:", segmentsMap);
+});
+
+console.log("Final segmentsMap:", segmentsMap);
+console.log("Object.fromEntries(segmentsMap):", Object.fromEntries(segmentsMap));
+
+  
+return {
+  segments: segmentsMap,
+};
+
+  
+    } catch (error: any) {
+      console.error("Error executing query:", error);
+      return { error: error.message };
+    }
+  }
