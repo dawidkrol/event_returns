@@ -134,10 +134,18 @@ export async function getRoadSegment(segmentHash: string): Promise<WithError<{ s
             `,
             [segmentHash]
         );
+
+        const travelTimeMs = 
+          (result[0].travel_time.minutes || 0) * 60 * 1000 +
+          (result[0].travel_time.seconds || 0) * 1000 +
+          (result[0].travel_time.milliseconds || 0);
+
         return { segment: {
             segmentHash: result[0].segment_hash,
             length: result[0].segment_length,
-            cost: result[0].travel_time,
+            cost: {
+              totalMilliseconds: travelTimeMs,
+            },
         }};
 
     } catch (error: any) {

@@ -643,7 +643,7 @@ BEGIN
     );
 
     INSERT INTO temporary_road_to_segment (road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_of_userId)
-    SELECT road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_of_userId
+    SELECT trs.road_id, trs.segment_hash, trs.previous_segment_hash, trs.next_segment_hash, trs.getting_of_userId
     FROM road_to_segment trs
     WHERE trs.road_id = v_road_id
       AND trs.segment_hash != v_segment_hash;

@@ -68,7 +68,7 @@ export async function updateRouteProposition(
               passengerId
             ]
         );
-        return { roadId: result[0].update_route_proposition };
+        return { roadId: result[0].fn_update_route_proposition };
 
     } catch (error: any) {
         console.error("Error executing query:", error);
