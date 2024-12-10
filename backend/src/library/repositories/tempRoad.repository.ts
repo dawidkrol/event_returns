@@ -50,3 +50,28 @@ export async function addNewRouteProposition(
         return { error: error.message };
     }
 }
+
+export async function updateRouteProposition(
+    segmentId_hash: string,
+    newSegment_hash_1: string,
+    newSegment_hash_2: string,
+    passengerId: string
+): Promise<WithError<{roadId: string}, string>> {
+    try {
+        const result = await query(
+            `SELECT fn_update_route_proposition($1, $2, $3, $4);
+            `,
+            [
+              segmentId_hash, 
+              newSegment_hash_1,
+              newSegment_hash_2, 
+              passengerId
+            ]
+        );
+        return { roadId: result[0].update_route_proposition };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}

@@ -107,6 +107,26 @@ export async function getRoadToSegmentsByRoadId(roadId: string): Promise<WithErr
     }
 }
 
+export async function getTmpRoadToSegmentsByRoadId(roadId: string): Promise<WithError<{ roadSegments: RoadToSegment[] }, string>> {
+  try {
+      const result = await query(
+          `SELECT road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_of_userid FROM temporary_road_to_segment WHERE road_id = $1;
+          `,
+          [roadId]
+      );
+      return { roadSegments: result.map((row: any) => ({
+          roadId: row.road_id,
+          segmentHash: row.segment_hash,
+          previousSegmentHash: row.previous_segment_hash,
+          nextSegmentHash: row.next_segment_hash,
+          gettingOfUserId: row.getting_of_userid,
+      })) };
+  } catch (error: any) {
+      console.error("Error executing query:", error);
+      return { error: error.message };
+  }
+}
+
 export async function getRoadSegment(segmentHash: string): Promise<WithError<{ segment: Segment }, string>> {
     try {
         const result = await query(
@@ -136,26 +156,16 @@ export async function setPassengerInRoadSegment(
       [passengerId, segmentId]
     );
 
-    console.log(`result: ${JSON.stringify(result)}`);
-
     const segmentsMap = new Map<number, { segment: Segment }>();
-
-    console.log("Before loop, result:", result);
 result.forEach((row: any) => {
-  console.log("Processing row:", row);
-
   const travelTimeMs = 
     (row.travel_time.minutes || 0) * 60 * 1000 +
     (row.travel_time.seconds || 0) * 1000 +
     (row.travel_time.milliseconds || 0);
 
-  console.log("Calculated travelTimeMs:", travelTimeMs);
-
   const segmentLength = parseFloat(row.segment_length);
-  console.log("Parsed segmentLength:", segmentLength);
 
   const seq = Number(row.seq);
-  console.log("Parsed seq:", seq);
 
   segmentsMap.set(seq, {
     segment: {
@@ -166,18 +176,11 @@ result.forEach((row: any) => {
       },
     },
   });
-
-  console.log("Updated segmentsMap:", segmentsMap);
 });
-
-console.log("Final segmentsMap:", segmentsMap);
-console.log("Object.fromEntries(segmentsMap):", Object.fromEntries(segmentsMap));
-
   
 return {
   segments: segmentsMap,
 };
-
   
     } catch (error: any) {
       console.error("Error executing query:", error);
