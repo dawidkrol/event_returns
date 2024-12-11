@@ -80,7 +80,7 @@ CREATE TABLE road_segments (
     end_point GEOMETRY(Point, 4326) NOT NULL,
     path_geometry GEOMETRY(MultiLineString, 4326) NOT NULL,
     segment_length DECIMAL NULL,
-    travel_time INTERVAL NULL,
+    travel_time INTERVAL NULL
 );
 
 CREATE INDEX ON road_segments USING GIST (path_geometry);
@@ -441,7 +441,12 @@ DECLARE
     v_passanger_numberOfPeople INT;
     V_initialDepartureTime TIMESTAMP;
     V_finalDepartureTime TIMESTAMP;
+    v_event_id UUID;
 BEGIN
+    SELECT event_id INTO v_event_id
+    FROM users
+    WHERE user_id = v_passenger_id;
+
     SELECT ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), number_of_people, initial_departure_time, final_departure_time
     INTO v_passenger_geom, v_passanger_numberOfPeople, V_initialDepartureTime, V_finalDepartureTime
     FROM passengers
@@ -465,7 +470,10 @@ BEGIN
         ON er.road_id = rts.road_id AND trts.segment_hash IS NULL
     JOIN road_segments rs 
         ON COALESCE(trts.segment_hash, rts.segment_hash) = rs.segment_hash
-    WHERE ST_DWithin(
+    JOIN users u 
+        ON d.user_id = u.user_id
+    WHERE u.event_id = v_event_id
+    AND ST_DWithin(
         v_passenger_geom, 
         rs.path_geometry, 
         10000

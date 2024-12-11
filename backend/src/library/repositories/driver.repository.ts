@@ -5,7 +5,7 @@ export async function addDriver(driverModel: Driver): Promise<{ error: Error | n
     try {
         await query(
             `INSERT INTO drivers (user_id, latitude, longitude, initial_departure_time, final_departure_time, number_of_available_seats, number_of_available_passengers)
-            VALUES ($1, $2, $3, $4, $5, $6)`,
+            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
             [driverModel.userId, driverModel.latitude, driverModel.longitude, driverModel.initialDepartureTime, driverModel.finalDepartureTime, driverModel.numberOfAvailableSeats, driverModel.numberOfAvailableSeats]
         );
         return { error: null };
