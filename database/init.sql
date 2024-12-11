@@ -294,7 +294,7 @@ BEGIN
             v_segment_hash,
             ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326) AS start_point,
             ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326) AS end_point,
-            path_geometry,
+            ST_LineMerge(path_geometry),
             segment_length,
             travel_time;
     END IF;
@@ -405,7 +405,7 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION check_point_in_table(
     lon DOUBLE PRECISION,
     lat DOUBLE PRECISION,
-    tolerance DOUBLE PRECISION DEFAULT 0.05
+    tolerance DOUBLE PRECISION DEFAULT 1
 )
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -436,50 +436,38 @@ CREATE OR REPLACE FUNCTION fn_find_nearest_driver_route_for_passenger(
 ) AS
 $$
 DECLARE
-    v_passenger_lon DOUBLE PRECISION;
-    v_passenger_lat DOUBLE PRECISION;
-    v_nearest_distance DOUBLE PRECISION := NULL;
-    v_nearest_driver_id UUID;
-    v_nearest_road_id UUID;
-    v_nearest_segment_hash TEXT;
-    v_current_driver_id UUID;
-    v_current_road_id UUID;
-    v_current_segment_hash TEXT;
-    v_current_path_geometry GEOMETRY(LineString, 4326);
-    v_distance_to_path DOUBLE PRECISION;
+    v_passenger_geom GEOMETRY(Point, 4326);
 BEGIN
-    SELECT longitude, latitude
-    INTO v_passenger_lon, v_passenger_lat
+    SELECT ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
+    INTO v_passenger_geom
     FROM passengers
     WHERE user_id = v_passenger_id;
 
-    FOR v_current_driver_id, v_current_road_id, v_current_segment_hash IN
-        SELECT d.user_id, er.road_id, rs.segment_hash
-        FROM drivers d
-        JOIN event_roads er ON d.user_id = er.driver_Id
-        JOIN road_to_segment rts ON er.road_id = rts.road_id
-        JOIN road_segments rs ON rts.segment_hash = rs.segment_hash
-
-    LOOP
-        SELECT path_geometry INTO v_current_path_geometry
-        FROM road_segments
-        WHERE segment_hash = v_current_segment_hash;
-
-        v_distance_to_path := ST_Distance(
-            ST_SetSRID(ST_MakePoint(v_passenger_lon, v_passenger_lat), 4326),
-            v_current_path_geometry
-        );
-
-        IF v_nearest_distance IS NULL OR v_distance_to_path < v_nearest_distance THEN
-            v_nearest_distance := v_distance_to_path;
-            v_nearest_driver_id := v_current_driver_id;
-            v_nearest_road_id := v_current_road_id;
-            v_nearest_segment_hash := v_current_segment_hash;
-        END IF;
-    END LOOP;
+    IF v_passenger_geom IS NULL THEN
+        RAISE EXCEPTION 'Passenger ID % not found.', v_passenger_id;
+    END IF;
 
     RETURN QUERY
-    SELECT v_nearest_driver_id, v_nearest_road_id, v_nearest_distance, v_nearest_segment_hash;
+    SELECT
+        d.user_id AS driver_id,
+        er.road_id AS road_id,
+        ST_Distance(v_passenger_geom, rs.path_geometry) AS nearest_distance,
+        rs.segment_hash AS nearest_segment_hash
+    FROM drivers d
+    JOIN event_roads er ON d.user_id = er.driver_id
+    LEFT JOIN temporary_road_to_segment trts 
+        ON er.road_id = trts.road_id
+    LEFT JOIN road_to_segment rts 
+        ON er.road_id = rts.road_id AND trts.segment_hash IS NULL
+    JOIN road_segments rs 
+        ON COALESCE(trts.segment_hash, rts.segment_hash) = rs.segment_hash
+    WHERE ST_DWithin(
+        v_passenger_geom, 
+        rs.path_geometry, 
+        10000
+    )
+    ORDER BY ST_Distance(v_passenger_geom, rs.path_geometry)
+    LIMIT 1;
 END;
 $$ LANGUAGE plpgsql;
 
