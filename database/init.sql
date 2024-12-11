@@ -438,9 +438,12 @@ CREATE OR REPLACE FUNCTION fn_find_nearest_driver_route_for_passenger(
 $$
 DECLARE
     v_passenger_geom GEOMETRY(Point, 4326);
+    v_passanger_numberOfPeople INT;
+    V_initialDepartureTime TIMESTAMP;
+    V_finalDepartureTime TIMESTAMP;
 BEGIN
-    SELECT ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-    INTO v_passenger_geom
+    SELECT ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), number_of_people, initial_departure_time, final_departure_time
+    INTO v_passenger_geom, v_passanger_numberOfPeople, V_initialDepartureTime, V_finalDepartureTime
     FROM passengers
     WHERE user_id = v_passenger_id;
 
@@ -466,7 +469,9 @@ BEGIN
         v_passenger_geom, 
         rs.path_geometry, 
         10000
-    )
+    ) AND d.number_of_available_seats >= v_passanger_numberOfPeople
+    AND d.initial_departure_time <= V_initialDepartureTime
+    AND d.final_departure_time >= V_finalDepartureTime
     ORDER BY ST_Distance(v_passenger_geom, rs.path_geometry)
     LIMIT 1;
 END;
