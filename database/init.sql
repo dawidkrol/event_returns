@@ -78,9 +78,9 @@ CREATE TABLE road_segments (
     segment_hash TEXT PRIMARY KEY,
     start_point GEOMETRY(Point, 4326) NOT NULL,
     end_point GEOMETRY(Point, 4326) NOT NULL,
-    path_geometry GEOMETRY(LineString, 4326) NOT NULL,
+    path_geometry GEOMETRY(MultiLineString, 4326) NOT NULL,
     segment_length DECIMAL NULL,
-    travel_time INTERVAL NULL
+    travel_time INTERVAL NULL,
 );
 
 CREATE INDEX ON road_segments USING GIST (path_geometry);
@@ -128,9 +128,9 @@ RETURNS TABLE(seq INTEGER, node BIGINT, edge BIGINT, cost DOUBLE PRECISION, agg_
 $$
 BEGIN
     RETURN QUERY
-    SELECT pt.seq, pt.node, pt.edge, rd.cost, pt.agg_cost, rd.geom_way
-    FROM pgr_dijkstra(
-        'SELECT id, source, target, cost FROM pl_2po_4pgr',
+    SELECT pt.seq, pt.node, pt.edge, rd.cost, pt.agg_cost, ST_Multi(rd.geom_way)
+    FROM pgr_astar(
+        'SELECT id, source, target, cost, reverse_cost, x1, y1, x2, y2 FROM pl_2po_4pgr',
         (SELECT source FROM pl_2po_4pgr AS pl
          ORDER BY ST_Distance(
              ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326),
@@ -145,7 +145,8 @@ BEGIN
              true
          ) ASC
          LIMIT 1),
-        directed := false
+        directed := true,
+        heuristic := 2
     ) AS pt
     JOIN pl_2po_4pgr rd ON pt.edge = rd.id;
 END;
@@ -216,14 +217,14 @@ CREATE OR REPLACE FUNCTION fn_get_or_create_road(
     segment_hash TEXT,
     start_point GEOMETRY(Point, 4326),
     end_point GEOMETRY(Point, 4326),
-    path_geometry GEOMETRY(LineString, 4326),
+    path_geometry GEOMETRY(MultiLineString, 4326),
     segment_length DECIMAL,
     travel_time INTERVAL
 ) AS
 $$
 DECLARE
     v_segment_hash TEXT;
-    path_geometry GEOMETRY(LineString, 4326);
+    path_geometry GEOMETRY(MultiLineString, 4326);
     segment_length DECIMAL;
     travel_time_in_seconds DECIMAL;
     travel_time INTERVAL;
@@ -236,7 +237,7 @@ BEGIN
             rs.segment_hash,
             rs.start_point,
             rs.end_point,
-            rs.path_geometry,
+            ST_Multi(rs.path_geometry)::GEOMETRY(MultiLineString, 4326) as path_geometry,
             rs.segment_length,
             rs.travel_time
         FROM road_segments rs
@@ -249,7 +250,7 @@ BEGIN
             FROM fn_calculate_route(start_lon, start_lat, end_lon, end_lat)
         )
         SELECT 
-            ST_LineMerge(ST_Union(geom_way)) AS path_geometry,
+            ST_Multi(ST_Union(geom_way)) AS path_geometry,
             ST_Length(ST_Union(geom_way)) AS segment_length,
             SUM(cost) * 3600 AS travel_time_in_seconds
         INTO path_geometry, segment_length, travel_time_in_seconds
@@ -272,7 +273,7 @@ BEGIN
                 v_segment_hash,
                 ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326),
                 ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326),
-                path_geometry,
+                ST_Multi(path_geometry),
                 segment_length,
                 travel_time
             );
@@ -282,7 +283,7 @@ BEGIN
                 rs.segment_hash,
                 rs.start_point,
                 rs.end_point,
-                rs.path_geometry,
+                ST_Multi(rs.path_geometry)::GEOMETRY(MultiLineString, 4326),
                 rs.segment_length,
                 rs.travel_time
             FROM road_segments rs
@@ -294,7 +295,7 @@ BEGIN
             v_segment_hash,
             ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326) AS start_point,
             ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326) AS end_point,
-            ST_LineMerge(path_geometry),
+            ST_Multi(path_geometry)::GEOMETRY(MultiLineString, 4326),
             segment_length,
             travel_time;
     END IF;
@@ -349,7 +350,7 @@ DECLARE
     current_segment_hash TEXT;
     passenger_segment_hash TEXT;
     v_road_id UUID;
-    aggregated_geometry GEOMETRY(LineString, 4326);
+    aggregated_geometry GEOMETRY(MultiLineString, 4326);
 BEGIN
     SELECT road_id INTO v_road_id
     FROM road_to_segment
@@ -398,7 +399,7 @@ BEGIN
         END IF;
     END LOOP;
 
-    RETURN ST_LineMerge(aggregated_geometry);
+    RETURN ST_Multi(aggregated_geometry)::GEOMETRY(MultiLineString, 4326);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -532,7 +533,7 @@ BEGIN
         END IF;
     END LOOP;
 
-    RETURN ST_LineMerge(aggregated_geometry);
+    RETURN ST_Multi(aggregated_geometry)::GEOMETRY(MultiLineString, 4326);
 END;
 $$ LANGUAGE plpgsql;
 
