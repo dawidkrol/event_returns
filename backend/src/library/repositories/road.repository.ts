@@ -71,14 +71,14 @@ export async function checkIfPointIsAvailable(longitude: number, latitude: numbe
     }
 }
 
-export async function findNearestDriversRoad(passengerId: string): Promise<WithError<{roadId: string}, string>> {
+export async function findNearestDriversRoad(passengerId: string): Promise<WithError<{roadId: string, driverId: string}, string>> {
     try {
         const result = await query(
-            `SELECT road_id FROM fn_find_nearest_driver_route_for_passenger($1);
+            `SELECT road_id, driver_id FROM fn_find_nearest_driver_route_for_passenger($1);
             `,
             [passengerId]
         );
-        return { roadId: result[0].road_id };
+        return { roadId: result[0].road_id, driverId: result[0].driver_id };
 
     } catch (error: any) {
         console.error("Error executing query:", error);

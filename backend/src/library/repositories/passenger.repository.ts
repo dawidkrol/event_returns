@@ -16,6 +16,29 @@ export async function addPassenger(passegnerModel: Passenger): Promise<{ error: 
     }
 }
 
+export async function findPassengerById(passengerId: string): Promise<WithError<{ passenger: Passenger }, string>> {
+    try {
+        const result = await query(
+            `SELECT * FROM passengers WHERE user_id = $1`,
+            [passengerId]
+        );
+        return { passenger: 
+            {
+                userId: result[0].user_id,
+                longitude: result[0].longitude,
+                latitude: result[0].latitude,
+                numberOfPeople: result[0].number_of_people,
+                initialDepartureTime: result[0].initial_departure_time,
+                finalDepartureTime: result[0].final_departure_time,
+                driverId: result[0].driver_id
+            }
+         };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
 export async function findRoadForPassenger(passengerId: string): Promise<WithError<{ roadId: string }, string>> {
     try {
         const roadId = await query(

@@ -1,5 +1,7 @@
 import { RoadToSegment } from "~/models/road-to-segment.model";
 import { Segment } from "~/models/segment.model";
+import { addPassengersToSeats } from "~/repositories/driver.repository";
+import { findPassengerById } from "~/repositories/passenger.repository";
 import { findNearestDriversRoad, getRoadSegment, getRoadToSegmentsByRoadId, getTmpRoadToSegmentsByRoadId, setPassengerInRoadSegment } from "~/repositories/road.repository";
 import { addNewRouteProposition, updateRouteProposition } from "~/repositories/tempRoad.repository";
 import { WithError } from "~/utils/utils.type";
@@ -7,12 +9,15 @@ import { WithError } from "~/utils/utils.type";
 export async function createPassengerRoad(
   passengerId: string
 ): Promise<WithError<{roadId: string}, string>> {
-    const { roadId, error: optimalRoadError } = await findOptimalRoad(passengerId);
+    const { roadId, driverId, error: optimalRoadError } = await findOptimalRoad(passengerId);
     if (optimalRoadError) {
         return {error: optimalRoadError};
     }
     if (!roadId) {
         return { error: "Road not found" };
+    }
+    if (!driverId) {
+        return { error: "Driver not found" };
     }
 
     const { roadSegments: tmpRoadSegments, error: getTmpRoadToSegmentsError } = await getTmpRoadToSegments(roadId!);
@@ -34,6 +39,20 @@ export async function createPassengerRoad(
             return {error};
         }
     }
+    const { passenger, error: findPassengerError }  = await findPassengerById(passengerId);
+    if(findPassengerError) {
+        console.error("Error in findPassengerById:", findPassengerError);
+        return {error: findPassengerError};
+    }
+    if (!passenger) {
+        return { error: "Passenger not found" };
+    }
+    
+    const { error: addPassengersToSeatsError } = await addPassengersToSeats(driverId, passenger.numberOfPeople);
+    if (addPassengersToSeatsError) {
+        return { error: addPassengersToSeatsError };
+    }
+    
     // notify drivers about new proposition
     return { roadId };
 }
@@ -144,15 +163,18 @@ export async function createPassengerRoadFromTmpRoad(roadId: string, passengerId
 
 export async function findOptimalRoad(
   passengerId: string
-): Promise<WithError<{roadId: string}, string>> {
-    const {roadId, error} = await findNearestDriversRoad(passengerId);
+): Promise<WithError<{roadId: string, driverId: string}, string>> {
+    const {roadId, driverId, error} = await findNearestDriversRoad(passengerId);
     if (error) {
         return {error};
     }
     if (!roadId) {
         return { error: "Road not found" };
     }
-    return { roadId };
+    if (!driverId) {
+        return { error: "Driver not found" };
+    }
+    return { roadId, driverId };
 }
 
 export async function getRoadToSegments(roadId: string): Promise<WithError<{ roadSegments: RoadToSegment[] }, string>> {

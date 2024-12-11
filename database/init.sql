@@ -469,7 +469,7 @@ BEGIN
         v_passenger_geom, 
         rs.path_geometry, 
         10000
-    ) AND d.number_of_available_seats >= v_passanger_numberOfPeople
+    ) AND d.number_of_available_passengers >= v_passanger_numberOfPeople
     AND d.initial_departure_time <= V_initialDepartureTime
     AND d.final_departure_time >= V_finalDepartureTime
     ORDER BY ST_Distance(v_passenger_geom, rs.path_geometry)
