@@ -78,7 +78,7 @@ CREATE TABLE road_segments (
     segment_hash TEXT PRIMARY KEY,
     start_point GEOMETRY(Point, 4326) NOT NULL,
     end_point GEOMETRY(Point, 4326) NOT NULL,
-    path_geometry GEOMETRY(LineString, 4326) NOT NULL,
+    path_geometry GEOMETRY(MultiLineString, 4326) NOT NULL,
     segment_length DECIMAL NULL,
     travel_time INTERVAL NULL
 );
@@ -100,6 +100,22 @@ CREATE TABLE road_to_segment (
 );
 
 -- ==========================================
+-- Tabela tymczasowych tras (temporary_road_to_segment)
+-- ==========================================
+CREATE TABLE temporary_road_to_segment (
+    road_id UUID REFERENCES event_roads(road_id) ON DELETE CASCADE,
+    segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE,
+    driver_id UUID REFERENCES drivers(user_id) ON DELETE CASCADE,
+    previous_segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE DEFAULT NULL,
+    next_segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE DEFAULT NULL,
+    getting_of_userId UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    modified_by_passenger_id UUID NOT NULL REFERENCES passengers(user_id),
+    status TEXT CHECK (status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT NOW(),
+    PRIMARY KEY (road_id, segment_hash)
+);
+
+-- ==========================================
 -- Funkcja licząca trasy (fn_calculate_route)
 -- ==========================================
 CREATE OR REPLACE FUNCTION fn_calculate_route(
@@ -112,9 +128,9 @@ RETURNS TABLE(seq INTEGER, node BIGINT, edge BIGINT, cost DOUBLE PRECISION, agg_
 $$
 BEGIN
     RETURN QUERY
-    SELECT pt.seq, pt.node, pt.edge, rd.cost, pt.agg_cost, rd.geom_way
-    FROM pgr_dijkstra(
-        'SELECT id, source, target, cost FROM pl_2po_4pgr',
+    SELECT pt.seq, pt.node, pt.edge, rd.cost, pt.agg_cost, ST_Multi(rd.geom_way)
+    FROM pgr_astar(
+        'SELECT id, source, target, cost, reverse_cost, x1, y1, x2, y2 FROM pl_2po_4pgr',
         (SELECT source FROM pl_2po_4pgr AS pl
          ORDER BY ST_Distance(
              ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326),
@@ -129,7 +145,8 @@ BEGIN
              true
          ) ASC
          LIMIT 1),
-        directed := false
+        directed := true,
+        heuristic := 2
     ) AS pt
     JOIN pl_2po_4pgr rd ON pt.edge = rd.id;
 END;
@@ -200,14 +217,14 @@ CREATE OR REPLACE FUNCTION fn_get_or_create_road(
     segment_hash TEXT,
     start_point GEOMETRY(Point, 4326),
     end_point GEOMETRY(Point, 4326),
-    path_geometry GEOMETRY(LineString, 4326),
+    path_geometry GEOMETRY(MultiLineString, 4326),
     segment_length DECIMAL,
     travel_time INTERVAL
 ) AS
 $$
 DECLARE
     v_segment_hash TEXT;
-    path_geometry GEOMETRY(LineString, 4326);
+    path_geometry GEOMETRY(MultiLineString, 4326);
     segment_length DECIMAL;
     travel_time_in_seconds DECIMAL;
     travel_time INTERVAL;
@@ -220,7 +237,7 @@ BEGIN
             rs.segment_hash,
             rs.start_point,
             rs.end_point,
-            rs.path_geometry,
+            ST_Multi(rs.path_geometry)::GEOMETRY(MultiLineString, 4326) as path_geometry,
             rs.segment_length,
             rs.travel_time
         FROM road_segments rs
@@ -233,7 +250,7 @@ BEGIN
             FROM fn_calculate_route(start_lon, start_lat, end_lon, end_lat)
         )
         SELECT 
-            ST_LineMerge(ST_Union(geom_way)) AS path_geometry,
+            ST_Multi(ST_Union(geom_way)) AS path_geometry,
             ST_Length(ST_Union(geom_way)) AS segment_length,
             SUM(cost) * 3600 AS travel_time_in_seconds
         INTO path_geometry, segment_length, travel_time_in_seconds
@@ -256,7 +273,7 @@ BEGIN
                 v_segment_hash,
                 ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326),
                 ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326),
-                path_geometry,
+                ST_Multi(path_geometry),
                 segment_length,
                 travel_time
             );
@@ -266,7 +283,7 @@ BEGIN
                 rs.segment_hash,
                 rs.start_point,
                 rs.end_point,
-                rs.path_geometry,
+                ST_Multi(rs.path_geometry)::GEOMETRY(MultiLineString, 4326),
                 rs.segment_length,
                 rs.travel_time
             FROM road_segments rs
@@ -278,7 +295,7 @@ BEGIN
             v_segment_hash,
             ST_SetSRID(ST_MakePoint(start_lon, start_lat), 4326) AS start_point,
             ST_SetSRID(ST_MakePoint(end_lon, end_lat), 4326) AS end_point,
-            path_geometry,
+            ST_Multi(path_geometry)::GEOMETRY(MultiLineString, 4326),
             segment_length,
             travel_time;
     END IF;
@@ -333,7 +350,7 @@ DECLARE
     current_segment_hash TEXT;
     passenger_segment_hash TEXT;
     v_road_id UUID;
-    aggregated_geometry GEOMETRY(LineString, 4326);
+    aggregated_geometry GEOMETRY(MultiLineString, 4326);
 BEGIN
     SELECT road_id INTO v_road_id
     FROM road_to_segment
@@ -382,14 +399,14 @@ BEGIN
         END IF;
     END LOOP;
 
-    RETURN aggregated_geometry;
+    RETURN ST_Multi(aggregated_geometry)::GEOMETRY(MultiLineString, 4326);
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION check_point_in_table(
     lon DOUBLE PRECISION,
     lat DOUBLE PRECISION,
-    tolerance DOUBLE PRECISION DEFAULT 0.005
+    tolerance DOUBLE PRECISION DEFAULT 1
 )
 RETURNS BOOLEAN AS $$
 DECLARE
@@ -407,5 +424,301 @@ BEGIN
     INTO point_exists;
 
     RETURN point_exists;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_find_nearest_driver_route_for_passenger(
+    v_passenger_id UUID
+) RETURNS TABLE (
+    driver_id UUID,
+    road_id UUID,
+    nearest_distance DOUBLE PRECISION,
+    nearest_segment_hash TEXT
+) AS
+$$
+DECLARE
+    v_passenger_geom GEOMETRY(Point, 4326);
+    v_passanger_numberOfPeople INT;
+    V_initialDepartureTime TIMESTAMP;
+    V_finalDepartureTime TIMESTAMP;
+    v_event_id UUID;
+BEGIN
+    SELECT event_id INTO v_event_id
+    FROM users
+    WHERE user_id = v_passenger_id;
+
+    SELECT ST_SetSRID(ST_MakePoint(longitude, latitude), 4326), number_of_people, initial_departure_time, final_departure_time
+    INTO v_passenger_geom, v_passanger_numberOfPeople, V_initialDepartureTime, V_finalDepartureTime
+    FROM passengers
+    WHERE user_id = v_passenger_id;
+
+    IF v_passenger_geom IS NULL THEN
+        RAISE EXCEPTION 'Passenger ID % not found.', v_passenger_id;
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        d.user_id AS driver_id,
+        er.road_id AS road_id,
+        ST_Distance(v_passenger_geom, rs.path_geometry) AS nearest_distance,
+        rs.segment_hash AS nearest_segment_hash
+    FROM drivers d
+    JOIN event_roads er ON d.user_id = er.driver_id
+    LEFT JOIN temporary_road_to_segment trts 
+        ON er.road_id = trts.road_id
+    LEFT JOIN road_to_segment rts 
+        ON er.road_id = rts.road_id AND trts.segment_hash IS NULL
+    JOIN road_segments rs 
+        ON COALESCE(trts.segment_hash, rts.segment_hash) = rs.segment_hash
+    JOIN users u 
+        ON d.user_id = u.user_id
+    WHERE u.event_id = v_event_id
+    AND ST_DWithin(
+        v_passenger_geom, 
+        rs.path_geometry, 
+        10000
+    ) AND d.number_of_available_passengers >= v_passanger_numberOfPeople
+    AND d.initial_departure_time <= V_initialDepartureTime
+    AND d.final_departure_time >= V_finalDepartureTime
+    ORDER BY ST_Distance(v_passenger_geom, rs.path_geometry)
+    LIMIT 1;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_get_temp_route(
+    v_passenger_id UUID
+) RETURNS GEOMETRY AS
+$$
+DECLARE
+    current_segment_hash TEXT;
+    passenger_segment_hash TEXT;
+    v_road_id UUID;
+    aggregated_geometry GEOMETRY(MultiLineString, 4326);
+BEGIN
+    SELECT trs1.road_id INTO v_road_id
+    FROM temporary_road_to_segment trs1
+    WHERE getting_of_userId = v_passenger_id;
+
+    SELECT trs2.segment_hash INTO passenger_segment_hash
+    FROM temporary_road_to_segment trs2
+    WHERE trs2.road_id = v_road_id
+      AND getting_of_userId = v_passenger_id;
+
+    IF passenger_segment_hash IS NULL THEN
+        RAISE EXCEPTION 'Passenger or their segment not found for the given road_id';
+    END IF;
+
+    SELECT segment_hash INTO current_segment_hash
+    FROM temporary_road_to_segment trs3
+    WHERE trs3.road_id = v_road_id
+      AND previous_segment_hash IS NULL;
+
+    IF current_segment_hash IS NULL THEN
+        RAISE EXCEPTION 'No starting segment found for the given road_id';
+    END IF;
+
+    aggregated_geometry := NULL;
+
+    LOOP
+        aggregated_geometry := 
+            CASE 
+                WHEN aggregated_geometry IS NULL THEN
+                    (SELECT path_geometry FROM road_segments WHERE segment_hash = current_segment_hash)
+                ELSE
+                    ST_Union(
+                        aggregated_geometry, 
+                        (SELECT path_geometry FROM road_segments WHERE segment_hash = current_segment_hash)
+                    )
+            END;
+
+        IF current_segment_hash = passenger_segment_hash THEN
+            EXIT;
+        END IF;
+
+
+        SELECT next_segment_hash INTO current_segment_hash
+        FROM temporary_road_to_segment trs4
+        WHERE trs4.road_id = v_road_id
+          AND trs4.segment_hash = current_segment_hash;
+
+        IF current_segment_hash IS NULL THEN
+            RAISE EXCEPTION 'Incomplete road structure: segment chain is broken before reaching passenger segment';
+        END IF;
+    END LOOP;
+
+    RETURN ST_Multi(aggregated_geometry)::GEOMETRY(MultiLineString, 4326);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_extend_segment_with_passenger(
+    v_passenger_id UUID,
+    v_segment_id TEXT
+) RETURNS TABLE (
+    segment_hash TEXT,
+    segment_length DECIMAL,
+    travel_time INTERVAL,
+	seq INT
+) AS
+$$
+DECLARE
+    v_segment_hash TEXT;
+    v_previous_segment_hash TEXT;
+    v_next_segment_hash TEXT;
+    v_start_point GEOMETRY(Point, 4326);
+    v_end_point GEOMETRY(Point, 4326);
+    v_passenger_lon DOUBLE PRECISION;
+    v_passenger_lat DOUBLE PRECISION;
+BEGIN
+    SELECT rs.start_point, rs.end_point
+    INTO v_start_point, v_end_point
+    FROM road_segments rs
+    WHERE rs.segment_hash = v_segment_id;
+
+    SELECT p.longitude, p.latitude
+    INTO v_passenger_lon, v_passenger_lat
+    FROM passengers p
+    WHERE p.user_id = v_passenger_id;
+
+    SELECT fn1.segment_hash into v_previous_segment_hash FROM fn_get_or_create_road(
+        ST_X(v_start_point), ST_Y(v_start_point), v_passenger_lon, v_passenger_lat
+    ) fn1;
+
+    SELECT fn2.segment_hash into v_next_segment_hash FROM fn_get_or_create_road(
+        v_passenger_lon, v_passenger_lat, ST_X(v_end_point), ST_Y(v_end_point)
+    ) fn2;
+
+    RETURN QUERY
+    (SELECT
+        rs.segment_hash,
+        rs.segment_length,
+        rs.travel_time,
+        1 AS seq
+    FROM road_segments rs
+    WHERE rs.segment_hash = v_previous_segment_hash)
+    UNION ALL
+    (SELECT
+        rs.segment_hash,
+        rs.segment_length,
+        rs.travel_time,
+        2 AS seq
+    FROM road_segments rs
+    WHERE rs.segment_hash = v_next_segment_hash);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION add_new_route_proposition(
+    v_segment_hash TEXT,
+    v_new_segment_hash_1 TEXT,
+    v_new_segment_hash_2 TEXT,
+    v_passenger_id UUID
+) RETURNS UUID AS
+$$
+DECLARE
+    v_road_id UUID;
+    org_next_segment_hash TEXT;
+    org_previous_segment_hash TEXT;
+BEGIN
+    SELECT road_id, next_segment_hash, previous_segment_hash
+    INTO v_road_id, org_next_segment_hash, org_previous_segment_hash
+    FROM road_to_segment
+    WHERE segment_hash = v_segment_hash;
+
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_of_userId, modified_by_passenger_id)
+    VALUES (
+        v_road_id,
+        v_new_segment_hash_1,
+        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
+        (SELECT previous_segment_hash FROM road_to_segment WHERE segment_hash = v_segment_hash),
+        v_new_segment_hash_2,
+        v_passenger_id,
+        v_passenger_id
+    );
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_of_userId, modified_by_passenger_id)
+    VALUES (
+        v_road_id,
+        v_new_segment_hash_2,
+        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
+        v_new_segment_hash_1,
+        (SELECT next_segment_hash FROM road_to_segment WHERE segment_hash = v_segment_hash),
+        (SELECT getting_of_userId FROM road_to_segment WHERE segment_hash = v_segment_hash),
+        v_passenger_id
+    );
+
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_of_userId)
+    SELECT trs.road_id, trs.segment_hash, trs.previous_segment_hash, trs.next_segment_hash, trs.getting_of_userId
+    FROM road_to_segment trs
+    WHERE trs.road_id = v_road_id
+      AND trs.segment_hash != v_segment_hash;
+
+    IF org_previous_segment_hash IS NOT NULL THEN
+        UPDATE temporary_road_to_segment
+        SET next_segment_hash = v_new_segment_hash_1
+        WHERE segment_hash = org_previous_segment_hash;
+    END IF;
+    
+    IF org_next_segment_hash IS NOT NULL THEN
+        UPDATE temporary_road_to_segment
+        SET previous_segment_hash = v_new_segment_hash_2
+        WHERE segment_hash = org_next_segment_hash;
+    END IF;
+
+    RETURN v_road_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_update_route_proposition(
+    v_segment_hash TEXT,
+    v_new_segment_hash_1 TEXT,
+    v_new_segment_hash_2 TEXT,
+    v_passenger_id UUID
+) RETURNS UUID AS
+$$
+DECLARE
+    v_road_id UUID;
+    v_previous_segment_hash TEXT;
+    v_next_segment_hash TEXT;
+BEGIN
+    SELECT road_id, next_segment_hash, previous_segment_hash
+    INTO v_road_id, v_next_segment_hash, v_previous_segment_hash
+    FROM temporary_road_to_segment
+    WHERE segment_hash = v_segment_hash;
+
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_of_userId, modified_by_passenger_id)
+    VALUES (
+        v_road_id,
+        v_new_segment_hash_1,
+        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
+        (SELECT previous_segment_hash FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash),
+        v_new_segment_hash_2,
+        v_passenger_id,
+        v_passenger_id
+    );
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_of_userId, modified_by_passenger_id)
+    VALUES (
+        v_road_id,
+        v_new_segment_hash_2,
+        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
+        v_new_segment_hash_1,
+        (SELECT next_segment_hash FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash),
+        (SELECT getting_of_userId FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash),
+        v_passenger_id
+    );
+
+    IF v_previous_segment_hash IS NOT NULL THEN
+        UPDATE temporary_road_to_segment
+        SET next_segment_hash = v_new_segment_hash_1
+        WHERE segment_hash = v_previous_segment_hash;
+    END IF;
+    
+    IF v_next_segment_hash IS NOT NULL THEN
+        UPDATE temporary_road_to_segment
+        SET previous_segment_hash = v_new_segment_hash_2
+        WHERE segment_hash = v_next_segment_hash;
+    END IF;
+
+    DELETE FROM temporary_road_to_segment
+    WHERE segment_hash = v_segment_hash;
+
+    RETURN v_road_id;
 END;
 $$ LANGUAGE plpgsql;
