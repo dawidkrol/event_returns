@@ -398,14 +398,14 @@ BEGIN
         END IF;
     END LOOP;
 
-    RETURN aggregated_geometry;
+    RETURN ST_LineMerge(aggregated_geometry);
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION check_point_in_table(
     lon DOUBLE PRECISION,
     lat DOUBLE PRECISION,
-    tolerance DOUBLE PRECISION DEFAULT 0.005
+    tolerance DOUBLE PRECISION DEFAULT 0.05
 )
 RETURNS BOOLEAN AS $$
 DECLARE
