@@ -13,6 +13,10 @@ export function validateDriver(req: Request): WithError<{ driverModel: Driver },
         return { error: "Initial departure time must be before final departure time" };
     }
 
+    if(numberOfAvailableSeats < 1) {
+        return { error: "Number of available seats must be greater than 0" };
+    }
+
     return {
         driverModel: {
             userId: req.params.userId,

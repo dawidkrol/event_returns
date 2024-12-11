@@ -13,6 +13,10 @@ export function validatePassenger(req: Request): WithError<{ passengerModel: Pas
         return { error: "Initial departure time must be before final departure time" };
     }
 
+    if(numberOfPeople < 1) {
+        return { error: "Number of people must be greater than 0" };
+    }
+
     return {
         passengerModel: {
             userId: req.params.userId,
