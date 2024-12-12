@@ -1,10 +1,12 @@
 import { ws } from "src/server";
 import { RoadToSegment } from "~/models/road-to-segment.model";
 import { Segment } from "~/models/segment.model";
+import { User } from "~/models/user.model";
 import { addPassengersToSeats } from "~/repositories/driver.repository";
 import { findPassengerById } from "~/repositories/passenger.repository";
 import { findNearestDriversRoad, getRoadSegment, getRoadToSegmentsByRoadId, getTmpRoadToSegmentsByRoadId, setPassengerInRoadSegment } from "~/repositories/road.repository";
-import { addNewRouteProposition, updateRouteProposition } from "~/repositories/tempRoad.repository";
+import { addNewRouteProposition, getPassengersIdByRequestId, updateRouteProposition } from "~/repositories/tempRoad.repository";
+import { getPersonById } from "~/repositories/user.repository";
 import { WithError } from "~/utils/utils.type";
 
 export async function createPassengerRoad(
@@ -62,10 +64,21 @@ export async function createPassengerRoad(
     if(!requestId) {
         return { error: "Request not found" };
     }
-    
 
+    var passengersIds = await getPassengersIdByRequestId(requestId);
+    const passengers: User[] = await Promise.all(passengersIds.passengerId.map(async (passengerId) => {
+        const { user, error } = await getPersonById(passengerId);
+        if (error) {
+            throw error;
+        }
+        return user!;
+    })).catch((error) => {
+        return [];
+    });
     console.log("Sending message to driver", driverId);
-    ws.sendMessageToDriver(driverId, JSON.stringify({ type: "new_proposition", requestId }));
+    ws.sendMessageToDriver(driverId, JSON.stringify({ type: "new_proposition", requestId, passengers: 
+        [ passengers.map(passenger => ({ name: passenger.name, email: passenger.email })) ]
+     }));
 
     return { requestId };
 }

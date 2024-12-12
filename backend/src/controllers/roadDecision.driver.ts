@@ -7,6 +7,7 @@ import { removePassengersFromSeats } from '~/repositories/driver.repository';
 import { ws } from 'src/server';
 import { findPassengerById } from '~/repositories/passenger.repository';
 import { Passenger } from '~/models/passenger.model';
+import { getPersonById } from '~/repositories/user.repository';
 
 export const roadDecision = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { requestId } = req.params;
@@ -62,10 +63,21 @@ export const roadDecision = catchAsync(async (req: Request, res: Response, next?
         return [];
     });
 
+    const {user: drivingUser, error} = await getPersonById(driverId);
+    if (error) {
+        return res.status(500).json({ error: error });
+    }
+
     if(decision === 'accept') {
         await moveRoadFromTemporaryToFinal(requestId);
         passengersIds.passengerId.forEach((passengerId) => {
-            ws.sendMessageToPassenger(passengerId, JSON.stringify({ type: "road_accepted", message: "Your road has been accepted" }));
+            ws.sendMessageToPassenger(passengerId, JSON.stringify({ type: "road_accepted", message: "Your road has been accepted", 
+                driver: 
+                    {
+                        name: drivingUser!.name,
+                        email: drivingUser!.email,
+                    } 
+            }));
         });
     } else if (decision === 'reject') {
         passengers.forEach((passenger) => {
