@@ -619,26 +619,27 @@ CREATE OR REPLACE FUNCTION add_new_route_proposition(
     v_segment_hash TEXT,
     v_new_segment_hash_1 TEXT,
     v_new_segment_hash_2 TEXT,
-    v_passenger_id UUID
+    v_passenger_id UUID,
+    v_road_id UUID
 ) RETURNS UUID AS
 $$
 DECLARE
-    v_road_id UUID;
     org_next_segment_hash TEXT;
     org_previous_segment_hash TEXT;
     v_request_id UUID;
 BEGIN
-    SELECT road_id, next_segment_hash, previous_segment_hash
-    INTO v_road_id, org_next_segment_hash, org_previous_segment_hash
+    SELECT next_segment_hash, previous_segment_hash
+    INTO org_next_segment_hash, org_previous_segment_hash
     FROM road_to_segment
-    WHERE segment_hash = v_segment_hash;
+    WHERE segment_hash = v_segment_hash
+      AND road_id = v_road_id;
 
     INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_off_userid, modified_by_passenger_id)
     VALUES (
         v_road_id,
         v_new_segment_hash_1,
-        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
-        (SELECT previous_segment_hash FROM road_to_segment WHERE segment_hash = v_segment_hash),
+        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id LIMIT 1),
+        (SELECT previous_segment_hash FROM road_to_segment WHERE segment_hash = v_segment_hash AND road_id = v_road_id),
         v_new_segment_hash_2,
         v_passenger_id,
         v_passenger_id
@@ -647,10 +648,10 @@ BEGIN
     VALUES (
         v_road_id,
         v_new_segment_hash_2,
-        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
+        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id LIMIT 1),
         v_new_segment_hash_1,
-        (SELECT next_segment_hash FROM road_to_segment WHERE segment_hash = v_segment_hash),
-        (SELECT getting_off_userid FROM road_to_segment WHERE segment_hash = v_segment_hash),
+        (SELECT next_segment_hash FROM road_to_segment WHERE segment_hash = v_segment_hash AND road_id = v_road_id),
+        (SELECT getting_off_userid FROM road_to_segment WHERE segment_hash = v_segment_hash AND road_id = v_road_id),
         v_passenger_id
     );
 
@@ -663,13 +664,15 @@ BEGIN
     IF org_previous_segment_hash IS NOT NULL THEN
         UPDATE temporary_road_to_segment
         SET next_segment_hash = v_new_segment_hash_1
-        WHERE segment_hash = org_previous_segment_hash;
+        WHERE segment_hash = org_previous_segment_hash
+          AND road_id = v_road_id;
     END IF;
     
     IF org_next_segment_hash IS NOT NULL THEN
         UPDATE temporary_road_to_segment
         SET previous_segment_hash = v_new_segment_hash_2
-        WHERE segment_hash = org_next_segment_hash;
+        WHERE segment_hash = org_next_segment_hash
+          AND road_id = v_road_id;
     END IF;
 
     SELECT gen_random_uuid() INTO v_request_id;
@@ -686,26 +689,27 @@ CREATE OR REPLACE FUNCTION fn_update_route_proposition(
     v_segment_hash TEXT,
     v_new_segment_hash_1 TEXT,
     v_new_segment_hash_2 TEXT,
-    v_passenger_id UUID
+    v_passenger_id UUID,
+    v_road_id UUID
 ) RETURNS UUID AS
 $$
 DECLARE
-    v_road_id UUID;
     v_previous_segment_hash TEXT;
     v_next_segment_hash TEXT;
     v_request_id UUID;
 BEGIN
-    SELECT road_id, next_segment_hash, previous_segment_hash
-    INTO v_road_id, v_next_segment_hash, v_previous_segment_hash
+    SELECT next_segment_hash, previous_segment_hash
+    INTO v_next_segment_hash, v_previous_segment_hash
     FROM temporary_road_to_segment
-    WHERE segment_hash = v_segment_hash;
+    WHERE segment_hash = v_segment_hash
+      AND road_id = v_road_id;
 
     INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_off_userid, modified_by_passenger_id)
     VALUES (
         v_road_id,
         v_new_segment_hash_1,
         (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
-        (SELECT previous_segment_hash FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash),
+        (SELECT previous_segment_hash FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash AND road_id = v_road_id),
         v_new_segment_hash_2,
         v_passenger_id,
         v_passenger_id
@@ -716,25 +720,28 @@ BEGIN
         v_new_segment_hash_2,
         (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
         v_new_segment_hash_1,
-        (SELECT next_segment_hash FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash),
-        (SELECT getting_off_userid FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash),
+        (SELECT next_segment_hash FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash AND road_id = v_road_id),
+        (SELECT getting_off_userid FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash AND road_id = v_road_id),
         v_passenger_id
     );
 
     IF v_previous_segment_hash IS NOT NULL THEN
         UPDATE temporary_road_to_segment
         SET next_segment_hash = v_new_segment_hash_1
-        WHERE segment_hash = v_previous_segment_hash;
+        WHERE segment_hash = v_previous_segment_hash
+            AND road_id = v_road_id;
     END IF;
     
     IF v_next_segment_hash IS NOT NULL THEN
         UPDATE temporary_road_to_segment
         SET previous_segment_hash = v_new_segment_hash_2
-        WHERE segment_hash = v_next_segment_hash;
+        WHERE segment_hash = v_next_segment_hash
+            AND road_id = v_road_id;
     END IF;
 
     DELETE FROM temporary_road_to_segment
-    WHERE segment_hash = v_segment_hash;
+    WHERE segment_hash = v_segment_hash
+      AND road_id = v_road_id;
 
     SELECT gen_random_uuid() INTO v_request_id;
 

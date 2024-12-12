@@ -30,19 +30,22 @@ export async function addNewRouteProposition(
     segmentId_hash: string,
     newSegment_hash_1: string,
     newSegment_hash_2: string,
-    passengerId: string
+    passengerId: string,
+    roadId: string
 ): Promise<WithError<{requestId: string}, string>> {
     try {
         const result = await query(
-            `SELECT add_new_route_proposition($1, $2, $3, $4);
+            `SELECT add_new_route_proposition($1, $2, $3, $4, $5);
             `,
             [
               segmentId_hash, 
               newSegment_hash_1,
               newSegment_hash_2, 
-              passengerId
+              passengerId, 
+              roadId
             ]
         );
+        console.log(result);
         return { requestId: result[0].add_new_route_proposition };
 
     } catch (error: any) {
@@ -52,6 +55,7 @@ export async function addNewRouteProposition(
 }
 
 export async function updateRouteProposition(
+    roadId: string,
     segmentId_hash: string,
     newSegment_hash_1: string,
     newSegment_hash_2: string,
@@ -59,13 +63,14 @@ export async function updateRouteProposition(
 ): Promise<WithError<{requestId: string}, string>> {
     try {
         const result = await query(
-            `SELECT fn_update_route_proposition($1, $2, $3, $4);
+            `SELECT fn_update_route_proposition($1, $2, $3, $4, $5);
             `,
             [
               segmentId_hash, 
               newSegment_hash_1,
               newSegment_hash_2, 
-              passengerId
+              passengerId,
+              roadId
             ]
         );
         return { requestId: result[0].fn_update_route_proposition };

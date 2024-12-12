@@ -1,3 +1,4 @@
+import { ws } from "src/server";
 import { RoadToSegment } from "~/models/road-to-segment.model";
 import { Segment } from "~/models/segment.model";
 import { addPassengersToSeats } from "~/repositories/driver.repository";
@@ -10,7 +11,7 @@ export async function createPassengerRoad(
   passengerId: string
 ): Promise<WithError<{requestId: string}, string>> {
     const { roadId, driverId, error: optimalRoadError } = await findOptimalRoad(passengerId);
-    let requestId: string | null = null;
+    let requestId: string | undefined = undefined;
 
     if (optimalRoadError) {
         return {error: optimalRoadError};
@@ -29,17 +30,20 @@ export async function createPassengerRoad(
     }
     if (tmpRoadSegments && tmpRoadSegments.length > 0) {
         console.log("Creating passenger road from tmp road");
-        const { requestId, error } = await createPassengerRoadFromTmpRoad(roadId!, passengerId);
+        const { requestId: request_id, error } = await createPassengerRoadFromTmpRoad(roadId!, passengerId);
         if (error) {
             return {error};
         }
+        requestId = request_id;
     }
     else {
         console.log("Creating passenger road from active road");
-        const { requestId, error } = await createPassengerRoadFromActiveRoad(roadId!, passengerId);
+        const { requestId: request_id, error } = await createPassengerRoadFromActiveRoad(roadId!, passengerId);
+        console.log("createPassengerRoadFromActiveRoad", requestId, error);
         if (error) {
             return {error};
         }
+        requestId = request_id;
     }
     const { passenger, error: findPassengerError }  = await findPassengerById(passengerId);
     if(findPassengerError) {
@@ -59,7 +63,10 @@ export async function createPassengerRoad(
         return { error: "Request not found" };
     }
     
-    // notify drivers about new proposition
+
+    console.log("Sending message to driver", driverId);
+    ws.sendMessageToClient(driverId, JSON.stringify({ type: "new_proposition", requestId }));
+
     return { requestId };
 }
 
@@ -106,7 +113,8 @@ export async function createPassengerRoadFromActiveRoad(roadId: string, passenge
 
     const min_cost_segment_hash = Array.from(segment_cost_map.entries()).reduce((prev, curr) => prev[1].costDifference < curr[1].costDifference ? prev : curr);
 
-    const { requestId, error: addNewPropositionError } = await addNewPropositionToTmpTable(min_cost_segment_hash[0], min_cost_segment_hash[1].newSegments, passengerId);
+    const { requestId, error: addNewPropositionError } = await addNewPropositionToTmpTable(roadId, min_cost_segment_hash[0], min_cost_segment_hash[1].newSegments, passengerId);
+    console.log("createPassengerRoadFromActiveRoad", requestId, addNewPropositionError);
     if (addNewPropositionError) {
         return {error: addNewPropositionError};
     }
@@ -162,7 +170,7 @@ export async function createPassengerRoadFromTmpRoad(roadId: string, passengerId
 
     const min_cost_segment_hash = Array.from(segment_cost_map.entries()).reduce((prev, curr) => prev[1].costDifference < curr[1].costDifference ? prev : curr);
 
-    const { requestId, error: updatePropositionError } = await updatePropositionInTmpTable(min_cost_segment_hash[0], min_cost_segment_hash[1].newSegments, passengerId);
+    const { requestId, error: updatePropositionError } = await updatePropositionInTmpTable(roadId, min_cost_segment_hash[0], min_cost_segment_hash[1].newSegments, passengerId);
     if (updatePropositionError) {
         return {error: updatePropositionError};
     }
@@ -240,8 +248,9 @@ export async function setPassengerInSegment(
     return { segments };
 }
 
-export async function addNewPropositionToTmpTable(segmentHash: string, newSegments: Map<number, { segment: Segment; }>, passengerId: string): Promise<WithError<{requestId: string}, string>> {
-    const { requestId, error } = await addNewRouteProposition(segmentHash, newSegments.get(1)!.segment.segmentHash, newSegments.get(2)!.segment.segmentHash, passengerId);
+export async function addNewPropositionToTmpTable(roadId: string, segmentHash: string, newSegments: Map<number, { segment: Segment; }>, passengerId: string): Promise<WithError<{requestId: string}, string>> {
+    const { requestId, error } = await addNewRouteProposition(segmentHash, newSegments.get(1)!.segment.segmentHash, newSegments.get(2)!.segment.segmentHash, passengerId, roadId);
+    console.log("addNewPropositionToTmpTable", requestId, error);
     if (error) {
         return {error};
     }
@@ -251,8 +260,8 @@ export async function addNewPropositionToTmpTable(segmentHash: string, newSegmen
     return { requestId };
 }
 
-export async function updatePropositionInTmpTable(segmentHash: string, newSegments: Map<number, { segment: Segment; }>, passengerId: string): Promise<WithError<{requestId: string}, string>> {
-    const { requestId, error } = await updateRouteProposition(segmentHash, newSegments.get(1)!.segment.segmentHash, newSegments.get(2)!.segment.segmentHash, passengerId);
+export async function updatePropositionInTmpTable(roadId: string, segmentHash: string, newSegments: Map<number, { segment: Segment; }>, passengerId: string): Promise<WithError<{requestId: string}, string>> {
+    const { requestId, error } = await updateRouteProposition(roadId, segmentHash, newSegments.get(1)!.segment.segmentHash, newSegments.get(2)!.segment.segmentHash, passengerId);
     if (error) {
         return {error};
     }
