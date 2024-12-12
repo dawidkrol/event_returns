@@ -36,15 +36,10 @@ export const setRoadPassenger = catchAsync(async (req: Request, res: Response, n
         return res.status(500).json({ error: "Error adding driver" });
     }
 
-    const { error: roadError } = await createPassengerRoad(passengerModel!.userId);
+    const { requestId, error: roadError } = await createPassengerRoad(passengerModel!.userId);
     if (roadError) {
         return res.status(500).json({ error: "Error creating road" });
     }
 
-    const { road, error: roadNotFoundError } = await getTempRoadByUserId(userId);
-    if (roadNotFoundError) {
-        return res.status(404).json({ error: "Road not found" });
-    }
-
-    return res.status(200).json({road});
+    return res.status(200).json({requestId});
 });

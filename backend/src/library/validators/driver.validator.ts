@@ -28,3 +28,14 @@ export function validateDriver(req: Request): WithError<{ driverModel: Driver },
         }
     };
 }
+
+export async function checkIfDriverExists(driverID: string): Promise<WithError<{exists: boolean}, string>> {
+    const { driver, error } = await getDriverById(driverID);
+    if (error) {
+        return { error: "Error fetching driver" };
+    }
+    if (!driver) {
+        return { exists: false };
+    }
+    return { exists: true };
+}

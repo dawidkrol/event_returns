@@ -8,8 +8,10 @@ import { WithError } from "~/utils/utils.type";
 
 export async function createPassengerRoad(
   passengerId: string
-): Promise<WithError<{roadId: string}, string>> {
+): Promise<WithError<{requestId: string}, string>> {
     const { roadId, driverId, error: optimalRoadError } = await findOptimalRoad(passengerId);
+    let requestId: string | null = null;
+
     if (optimalRoadError) {
         return {error: optimalRoadError};
     }
@@ -27,14 +29,14 @@ export async function createPassengerRoad(
     }
     if (tmpRoadSegments && tmpRoadSegments.length > 0) {
         console.log("Creating passenger road from tmp road");
-        const { error } = await createPassengerRoadFromTmpRoad(roadId!, passengerId);
+        const { requestId, error } = await createPassengerRoadFromTmpRoad(roadId!, passengerId);
         if (error) {
             return {error};
         }
     }
     else {
         console.log("Creating passenger road from active road");
-        const { error } = await createPassengerRoadFromActiveRoad(roadId!, passengerId);
+        const { requestId, error } = await createPassengerRoadFromActiveRoad(roadId!, passengerId);
         if (error) {
             return {error};
         }
@@ -53,8 +55,12 @@ export async function createPassengerRoad(
         return { error: addPassengersToSeatsError };
     }
     
+    if(!requestId) {
+        return { error: "Request not found" };
+    }
+    
     // notify drivers about new proposition
-    return { roadId };
+    return { requestId };
 }
 
 export async function createPassengerRoadFromActiveRoad(roadId: string, passengerId: string): Promise<WithError<{requestId: string}, string>>
