@@ -65,7 +65,7 @@ export async function createPassengerRoad(
     
 
     console.log("Sending message to driver", driverId);
-    ws.sendMessageToClient(driverId, JSON.stringify({ type: "new_proposition", requestId }));
+    ws.sendMessageToDriver(driverId, JSON.stringify({ type: "new_proposition", requestId }));
 
     return { requestId };
 }

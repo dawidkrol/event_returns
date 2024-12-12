@@ -30,7 +30,6 @@ export async function findPassengerById(passengerId: string): Promise<WithError<
                 numberOfPeople: result[0].number_of_people,
                 initialDepartureTime: result[0].initial_departure_time,
                 finalDepartureTime: result[0].final_departure_time,
-                driverId: result[0].driver_id
             }
          };
     } catch (error: any) {

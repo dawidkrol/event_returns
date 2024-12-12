@@ -24,8 +24,7 @@ export function validatePassenger(req: Request): WithError<{ passengerModel: Pas
             latitude,
             numberOfPeople,
             initialDepartureTime,
-            finalDepartureTime,
-            driverId: null
+            finalDepartureTime
         }
     };
 }

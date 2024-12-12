@@ -136,3 +136,17 @@ export async function deleteRouteProposition(requestId: string): Promise<void> {
         console.error("Error executing query:", error);
     }
 }
+
+export async function getPassengersIdByRequestId(requestId: string): Promise<{ passengerId: string[] }> {
+    try {
+        const result = await query(
+            `SELECT DISTINCT modified_by_passenger_id FROM temporary_road_to_segment WHERE request_id = $1;
+            `,
+            [requestId]
+        );
+        return { passengerId: result.map((row: any) => row.modified_by_passenger_id) };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { passengerId: [] };
+    }
+}

@@ -4,7 +4,7 @@ import { WithError } from "~/utils/utils.type";
 export async function checkIfRequestExists(requestId: string): Promise<WithError<{exists: boolean}, string>> {
     const { roadId, error } = await getRoutePropositionRoadIdByRequestId(requestId);
     if (error) {
-        return { error: "Error fetching user" };
+        return { error: "Error fetching proposition" };
     }
     if (!roadId) {
         return {exists: false};

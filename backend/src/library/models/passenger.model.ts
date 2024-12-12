@@ -5,5 +5,4 @@ export interface Passenger {
     numberOfPeople: number;
     initialDepartureTime: Date;
     finalDepartureTime: Date;
-    driverId: number | null;
 }

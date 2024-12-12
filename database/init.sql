@@ -50,8 +50,7 @@ CREATE TABLE passengers (
     latitude DECIMAL(9, 6),
     number_of_people INT NOT NULL CHECK (number_of_people > 0),
     initial_departure_time TIMESTAMP NOT NULL,
-    final_departure_time TIMESTAMP NOT NULL,
-    driver_id UUID REFERENCES drivers(user_id) ON DELETE SET NULL
+    final_departure_time TIMESTAMP NOT NULL
 );
 
 -- ==========================================
@@ -619,6 +618,7 @@ DECLARE
     org_next_segment_hash TEXT;
     org_previous_segment_hash TEXT;
     v_request_id UUID;
+    v_driver_Id UUID;
 BEGIN
     SELECT next_segment_hash, previous_segment_hash
     INTO org_next_segment_hash, org_previous_segment_hash
@@ -626,11 +626,16 @@ BEGIN
     WHERE segment_hash = v_segment_hash
       AND road_id = v_road_id;
 
+    SELECT driver_Id INTO v_driver_Id
+        FROM event_roads
+        WHERE road_id = v_road_id
+        LIMIT 1;
+
     INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_off_userid, modified_by_passenger_id)
     VALUES (
         v_road_id,
         v_new_segment_hash_1,
-        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id LIMIT 1),
+        v_driver_Id,
         (SELECT previous_segment_hash FROM road_to_segment WHERE segment_hash = v_segment_hash AND road_id = v_road_id),
         v_new_segment_hash_2,
         v_passenger_id,
@@ -640,15 +645,15 @@ BEGIN
     VALUES (
         v_road_id,
         v_new_segment_hash_2,
-        (SELECT driver_id FROM event_roads WHERE road_id = v_road_id LIMIT 1),
+        v_driver_Id,
         v_new_segment_hash_1,
         (SELECT next_segment_hash FROM road_to_segment WHERE segment_hash = v_segment_hash AND road_id = v_road_id),
         (SELECT getting_off_userid FROM road_to_segment WHERE segment_hash = v_segment_hash AND road_id = v_road_id),
         v_passenger_id
     );
 
-    INSERT INTO temporary_road_to_segment (road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_off_userid)
-    SELECT trs.road_id, trs.segment_hash, trs.previous_segment_hash, trs.next_segment_hash, trs.getting_off_userid
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_off_userid, modified_by_passenger_id, driver_Id)
+    SELECT trs.road_id, trs.segment_hash, trs.previous_segment_hash, trs.next_segment_hash, trs.getting_off_userid, v_passenger_id, v_driver_Id
     FROM road_to_segment trs
     WHERE trs.road_id = v_road_id
       AND trs.segment_hash != v_segment_hash;
