@@ -35,8 +35,11 @@ export async function getPeopleByEventId(eventId: string): Promise<WithError<{pe
 
 export async function getPersonById(personId: string): Promise<WithError<{ user: User}, Error>> {
     try {
-        const data = await query(`SELECT * FROM users WHERE user_id = $1`, [personId]);
-        return { user: data[0] };
+        const data = await query(`SELECT person_name, person_email FROM users WHERE user_id = $1`, [personId]);
+        return { user: {
+            name: data[0].person_name,
+            email: data[0].person_email
+        }};
     } catch (error: any) {
         console.error("Error executing query:", error);
         return { error: error as Error };

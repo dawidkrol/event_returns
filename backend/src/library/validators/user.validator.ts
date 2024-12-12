@@ -21,7 +21,6 @@ export async function checkIfUserExists(userID: string): Promise<{ error: string
     if (error) {
         return { error: "Error fetching user" };
     }
-    console.log(user);
     if (!user) {
         return { error: "User not found" };
     }

@@ -89,7 +89,7 @@ export async function findNearestDriversRoad(passengerId: string): Promise<WithE
 export async function getRoadToSegmentsByRoadId(roadId: string): Promise<WithError<{ roadSegments: RoadToSegment[] }, string>> {
     try {
         const result = await query(
-            `SELECT road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_of_userid FROM road_to_segment WHERE road_id = $1;
+            `SELECT road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_off_userid FROM road_to_segment WHERE road_id = $1;
             `,
             [roadId]
         );
@@ -98,7 +98,7 @@ export async function getRoadToSegmentsByRoadId(roadId: string): Promise<WithErr
             segmentHash: row.segment_hash,
             previousSegmentHash: row.previous_segment_hash,
             nextSegmentHash: row.next_segment_hash,
-            gettingOfUserId: row.getting_of_userid,
+            gettingOffUserId: row.getting_off_userid,
         })) };
 
     } catch (error: any) {
@@ -110,7 +110,7 @@ export async function getRoadToSegmentsByRoadId(roadId: string): Promise<WithErr
 export async function getTmpRoadToSegmentsByRoadId(roadId: string): Promise<WithError<{ roadSegments: RoadToSegment[] }, string>> {
   try {
       const result = await query(
-          `SELECT road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_of_userid FROM temporary_road_to_segment WHERE road_id = $1;
+          `SELECT road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_off_userid FROM temporary_road_to_segment WHERE road_id = $1;
           `,
           [roadId]
       );
@@ -119,7 +119,7 @@ export async function getTmpRoadToSegmentsByRoadId(roadId: string): Promise<With
           segmentHash: row.segment_hash,
           previousSegmentHash: row.previous_segment_hash,
           nextSegmentHash: row.next_segment_hash,
-          gettingOfUserId: row.getting_of_userid,
+          gettingOffUserId: row.getting_off_userid,
       })) };
   } catch (error: any) {
       console.error("Error executing query:", error);
