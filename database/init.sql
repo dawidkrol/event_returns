@@ -146,7 +146,7 @@ BEGIN
          ) ASC
          LIMIT 1),
         directed := true,
-        heuristic := 2
+        heuristic := 4
     ) AS pt
     JOIN pl_2po_4pgr rd ON pt.edge = rd.id;
 END;
