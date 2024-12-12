@@ -5,9 +5,9 @@ import { WithError } from "~/utils/utils.type";
 export async function addPassenger(passegnerModel: Passenger): Promise<{ error: Error | null }> {
     try {
         await query(
-            `INSERT INTO passengers (user_id, longitude, latitude, number_of_people, initial_departure_time, final_departure_time, driver_id) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [passegnerModel.userId, passegnerModel.longitude, passegnerModel.latitude, passegnerModel.numberOfPeople, passegnerModel.initialDepartureTime, passegnerModel.finalDepartureTime, null]
+            `INSERT INTO passengers (user_id, longitude, latitude, number_of_people, initial_departure_time, final_departure_time) 
+            VALUES ($1, $2, $3, $4, $5, $6)`,
+            [passegnerModel.userId, passegnerModel.longitude, passegnerModel.latitude, passegnerModel.numberOfPeople, passegnerModel.initialDepartureTime, passegnerModel.finalDepartureTime]
         );
         return { error: null };
     } catch (error: any) {
