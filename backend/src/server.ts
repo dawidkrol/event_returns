@@ -13,19 +13,22 @@ process.on('uncaughtException', (err: Error) => {
 
 const wsPort = process.env.WS_PORT || 3001;
 export const ws = new WebSocketServer()
-ws.startWS().listen(wsPort, () => {
+const wsServer = ws.startWS().listen(wsPort, () => {
   console.log(`WebSocket listening on port ${wsPort}!`);
 });
 
-const port = process.env.PORT || 3000;
-const server: Server = app.listen(port, () => {
-  console.log(`API listening on port ${port}!`);
+const apiPort = process.env.PORT || 3000;
+const apiServer: Server = app.listen(apiPort, () => {
+  console.log(`API listening on port ${apiPort}!`);
 });
 
 process.on('unhandledRejection', (err: Error) => {
   console.error('Unhandled Promise Rejection -- server shutdown');
   console.error(err.name, err.message);
-  server.close(() => {
+  apiServer.close(() => {
+    process.exit(1);
+  });
+  wsServer.close(() => {
     process.exit(1);
   });
 });

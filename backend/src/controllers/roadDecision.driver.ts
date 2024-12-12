@@ -4,6 +4,7 @@ import { getRoadByUserId } from '~/repositories/road.repository';
 import { checkIfRequestAndDriverAreConnected, checkIfRequestExists } from '~/validators/roadDecision.validator';
 import { checkIfDriverExists } from '~/validators/driver.validator';
 import { deleteRouteProposition, moveRoadFromTemporaryToFinal } from '~/repositories/tempRoad.repository';
+import { removePassengersFromSeats } from '~/repositories/driver.repository';
 
 export const roadDecision = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { requestId } = req.params;
@@ -50,6 +51,7 @@ export const roadDecision = catchAsync(async (req: Request, res: Response, next?
     if(decision === 'accept') {
         await moveRoadFromTemporaryToFinal(requestId);
     } else if (decision === 'reject') {
+        await removePassengersFromSeats(driverId, 1);
         await deleteRouteProposition(requestId);
     }
 

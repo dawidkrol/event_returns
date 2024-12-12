@@ -7,10 +7,10 @@ public clients = new Map<string, WebSocket>();
 public sendMessageToClient(clientId: string, message: string) {
     const client = this.clients.get(clientId);
     if (client && client.readyState === WebSocket.OPEN) {
-        console.log(`Wysyłanie wiadomości do klienta o ID: ${clientId}`);
+        console.log(`Sending message to client with ID: ${clientId}`);
         client.send(message);
     } else {
-        console.log(`Nie znaleziono klienta o ID: ${clientId} lub połączenie jest zamknięte`);
+        console.log(`Client with ID ${clientId} not found`);
     }
 }
 
@@ -23,7 +23,7 @@ public startWS(): http.Server<typeof http.IncomingMessage, typeof http.ServerRes
             const clientId = message.toString();
             if (clientId) {
                 this.clients.set(clientId, ws);
-                console.log(`Klient z ID ${clientId} połączony`);
+                console.log(`Client with ID ${clientId} connected`);
             }
         });
 
@@ -31,7 +31,7 @@ public startWS(): http.Server<typeof http.IncomingMessage, typeof http.ServerRes
             this.clients.forEach((client, clientId) => {
                 if (client === ws) {
                     this.clients.delete(clientId);
-                    console.log(`Klient z ID ${clientId} rozłączony`);
+                    console.log(`Client with ID ${clientId} disconnected`);
                 }
             });
         });

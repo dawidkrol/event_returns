@@ -117,14 +117,6 @@ CREATE TABLE temporary_road_to_segment (
 );
 
 -- ==========================================
--- Tabela mapowania użytkowników na kanały (ws_users_channel_map)
--- ==========================================
-CREATE TABLE ws_users_channel_map (
-    user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
-    channel TEXT NOT NULL
-);
-
--- ==========================================
 -- Funkcja licząca trasy (fn_calculate_route)
 -- ==========================================
 CREATE OR REPLACE FUNCTION fn_calculate_route(
