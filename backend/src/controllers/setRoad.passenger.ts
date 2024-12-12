@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
 import { checkIfUserExists } from '~/validators/user.validator';
-import { checkIfPointIsAvailable } from '~/repositories/road.repository';
+import { checkIfPointIsAvailable, checkIfUserIsInRoad, getRoadByUserId } from '~/repositories/road.repository';
 import { validatePassenger } from '~/validators/passenger.validator';
-import { addPassenger } from '~/repositories/passenger.repository';
-import { getTempRoadByUserId } from '~/repositories/tempRoad.repository';
+import { addPassenger, findPassengerById } from '~/repositories/passenger.repository';
+import { checkIfUserIsInTemporaryRoad, getTempRoadByUserId } from '~/repositories/tempRoad.repository';
 import { createPassengerRoad } from '~/services/passegner-road.service';
 
 export const setRoadPassenger = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
@@ -31,9 +31,26 @@ export const setRoadPassenger = catchAsync(async (req: Request, res: Response, n
         return res.status(400).json({ error: "Location is not available" });
     }
 
-    const { error: driverAddError } = await addPassenger(passengerModel!);
-    if (driverAddError) {
-        return res.status(500).json({ error: "Error adding driver" });
+    const { isUserInTemporaryRoad } = await checkIfUserIsInTemporaryRoad(userId);
+    if(isUserInTemporaryRoad) {
+        return res.status(400).json({ error: "User already has a road, wait for the driver to accept" });
+    }
+
+    const { isUserInRoad } = await checkIfUserIsInRoad(userId);
+    if(isUserInRoad) {
+        return res.status(400).json({ error: "User already has a road" });
+    }
+
+    const { passenger, error: findPassengerByIdError } = await findPassengerById(userId);
+    if(findPassengerByIdError) {
+        return res.status(500).json({ error: findPassengerByIdError });
+    }
+
+    if(!passenger) {
+        const { error: driverAddError } = await addPassenger(passengerModel!);
+        if (driverAddError) {
+            return res.status(500).json({ error: "Error adding driver" });
+        }
     }
 
     const { requestId, error: roadError } = await createPassengerRoad(passengerModel!.userId);

@@ -1,6 +1,21 @@
 import { query } from "~/utils/db";
 import { WithError } from "~/utils/utils.type";
 
+export async function checkIfUserIsInTemporaryRoad(userId: string): Promise<{ isUserInTemporaryRoad: boolean }> {
+    try {
+        const result = await query(
+            `SELECT * FROM temporary_road_to_segment WHERE getting_off_userid = $1;
+            `,
+            [userId]
+        );
+        return { isUserInTemporaryRoad: result.length > 0 };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { isUserInTemporaryRoad: false };
+    }
+}
+
 export async function getTempRoadByUserId(userId: string): Promise<WithError<{road: { type: string; features: any }}, string>> {
     try {
         const result = await query(

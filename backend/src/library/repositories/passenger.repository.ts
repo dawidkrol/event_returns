@@ -16,12 +16,17 @@ export async function addPassenger(passegnerModel: Passenger): Promise<{ error: 
     }
 }
 
-export async function findPassengerById(passengerId: string): Promise<WithError<{ passenger: Passenger }, string>> {
+export async function findPassengerById(passengerId: string): Promise<WithError<{ passenger: Passenger | null }, string>> {
     try {
         const result = await query(
             `SELECT * FROM passengers WHERE user_id = $1`,
             [passengerId]
         );
+
+        if (result.length === 0) {
+            return { passenger: null };
+        }
+        
         return { passenger: 
             {
                 userId: result[0].user_id,
@@ -38,13 +43,13 @@ export async function findPassengerById(passengerId: string): Promise<WithError<
     }
 }
 
-export async function findRoadForPassenger(passengerId: string): Promise<WithError<{ roadId: string }, string>> {
+export async function findRoadForPassenger(passengerId: string): Promise<WithError<{ roadId: string | null }, string>> {
     try {
         const roadId = await query(
             `SELECT * FROM fn_extend_route_with_passenger($1)`,
             [passengerId]
         );
-        return { roadId: roadId[0].v_road_id };
+        return { roadId: roadId[0].v_route_id };
     } catch (error: any) {
         console.error("Error executing query:", error);
         return { error: error.message };

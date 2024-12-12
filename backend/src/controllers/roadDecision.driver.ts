@@ -80,11 +80,11 @@ export const roadDecision = catchAsync(async (req: Request, res: Response, next?
             }));
         });
     } else if (decision === 'reject') {
-        passengers.forEach((passenger) => {
-            removePassengersFromSeats(driverId, passenger.numberOfPeople);
+        await deleteRouteProposition(requestId);
+        passengers.forEach(async (passenger) => {
+            await removePassengersFromSeats(driverId, passenger.numberOfPeople);
             ws.sendMessageToPassenger(passenger.userId, JSON.stringify({ type: "road_rejected", message: "Your road has been rejected" }));
         });
-        await deleteRouteProposition(requestId);
     }
 
     return res.status(200).json({});

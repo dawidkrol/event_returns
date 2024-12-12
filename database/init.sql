@@ -780,7 +780,7 @@ CREATE OR REPLACE FUNCTION fn_delete_road_from_temporary(
 ) RETURNS VOID AS
 $$
 BEGIN
-    DELETE FROM fn_delete_road_from_temporary
+    DELETE FROM temporary_road_to_segment
     WHERE request_id = v_request_id;
 END;
 $$ LANGUAGE plpgsql;

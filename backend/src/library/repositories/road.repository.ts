@@ -3,6 +3,21 @@ import { Segment } from "~/models/segment.model";
 import { query } from "~/utils/db";
 import { WithError } from "~/utils/utils.type";
 
+export async function checkIfUserIsInRoad(userId: string): Promise<{ isUserInRoad: boolean }> {
+    try {
+        const result = await query(
+            `SELECT * FROM road_to_segment WHERE getting_off_userid = $1;
+            `,
+            [userId]
+        );
+        return { isUserInRoad: result.length > 0 };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { isUserInRoad: false };
+    }
+}
+
 export async function getRoadById(roadId: string): Promise<WithError<{road: { type: string; features: any }}, string>> {
     try {
         const result = await query(
@@ -71,19 +86,23 @@ export async function checkIfPointIsAvailable(longitude: number, latitude: numbe
     }
 }
 
-export async function findNearestDriversRoad(passengerId: string): Promise<WithError<{roadId: string, driverId: string}, string>> {
-    try {
-        const result = await query(
-            `SELECT road_id, driver_id FROM fn_find_nearest_driver_route_for_passenger($1);
-            `,
-            [passengerId]
-        );
-        return { roadId: result[0].road_id, driverId: result[0].driver_id };
+export async function findNearestDriversRoad(passengerId: string): Promise<WithError<{roadId: string | null, driverId: string | null}, string>> {
+  try {
+      const result = await query(
+          `SELECT road_id, driver_id FROM fn_find_nearest_driver_route_for_passenger($1);`,
+          [passengerId]
+      );
 
-    } catch (error: any) {
-        console.error("Error executing query:", error);
-        return { error: error.message };
-    }
+      if (result.length === 0) {
+          return { roadId: null, driverId: null };
+      }
+
+      return { roadId: result[0].road_id, driverId: result[0].driver_id }; 
+
+  } catch (error: any) {
+      console.error("Error executing query:", error);
+      return { error: error.message };
+  }
 }
 
 export async function getRoadToSegmentsByRoadId(roadId: string): Promise<WithError<{ roadSegments: RoadToSegment[] }, string>> {
