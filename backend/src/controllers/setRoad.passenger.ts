@@ -38,7 +38,7 @@ export const setRoadPassenger = catchAsync(async (req: Request, res: Response, n
 
     const { requestId, error: roadError } = await createPassengerRoad(passengerModel!.userId);
     if (roadError) {
-        return res.status(500).json({ error: "Error creating road" });
+        return res.status(500).json({ error: roadError });
     }
 
     return res.status(200).json({requestId});

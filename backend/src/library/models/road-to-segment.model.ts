@@ -3,5 +3,5 @@ export interface RoadToSegment {
     segmentHash: string;
     previousSegmentHash: string | null;
     nextSegmentHash: string | null;
-    gettingOfUserId: string;
+    gettingOffUserId: string;
 }

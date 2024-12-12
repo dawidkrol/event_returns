@@ -1,5 +1,6 @@
 import { Driver } from "~/models/driver.model";
 import { query } from "~/utils/db";
+import { WithError } from "~/utils/utils.type";
 
 export async function addDriver(driverModel: Driver): Promise<{ error: Error | null }> {
     try {
@@ -42,5 +43,25 @@ export async function removePassengersFromSeats(driverId: string, numberOfPassen
     } catch (error: any) {
         console.error("Error executing query:", error);
         return { error: error as Error };
+    }
+}
+
+export async function getDriverById(driverId: string): Promise<WithError<{driver: Driver}, string>> {
+    try {
+        const result = await query(
+            `SELECT user_id, latitude, longitude, initial_departure_time, final_departure_time, number_of_available_seats FROM drivers WHERE user_id = $1`,
+            [driverId]
+        );
+        return { driver: {
+            userId: result[0].user_id,
+            latitude: result[0].latitude,
+            longitude: result[0].longitude,
+            initialDepartureTime: result[0].initial_departure_time,
+            finalDepartureTime: result[0].final_departure_time,
+            numberOfAvailableSeats: result[0].number_of_available_seats
+        } };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
     }
 }

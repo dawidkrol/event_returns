@@ -75,3 +75,59 @@ export async function updateRouteProposition(
         return { error: error.message };
     }
 }
+
+export async function getRoutePropositionRoadIdByRequestId(requestId: string): Promise<WithError<{roadId: string | null}, string>> {
+    try {
+        const result = await query(
+            `SELECT road_id FROM temporary_road_to_segment WHERE request_id = $1;
+            `,
+            [requestId]
+        );
+        return { roadId: result[0]?.road_id || null };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function getRoutePropositionByUserIdAndDriverId(requestId: string, driverId: string): Promise<WithError<{roadId: string | null}, string>> {
+    try {
+        const result = await query(
+            `SELECT road_id FROM temporary_road_to_segment WHERE request_id = $1 AND driver_id = $2;
+            `,
+            [requestId, driverId]
+        );
+        return { roadId: result[0]?.road_id || null };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function moveRoadFromTemporaryToFinal(requestId: string): Promise<void> {
+    try {
+        await query(
+            `SELECT fn_move_road_from_temporary_to_final($1);
+            `,
+            [requestId]
+        );
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+    }
+}
+
+export async function deleteRouteProposition(requestId: string): Promise<void> {
+    try {
+        await query(
+            `SELECT fn_delete_road_from_temporary($1);
+            `,
+            [requestId]
+        );
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+    }
+}

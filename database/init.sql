@@ -95,7 +95,7 @@ CREATE TABLE road_to_segment (
     segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE,
     previous_segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE DEFAULT NULL,
     next_segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE DEFAULT NULL,
-    getting_of_userId UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    getting_off_userid UUID REFERENCES users(user_id) ON DELETE SET NULL,
     PRIMARY KEY (road_id, segment_hash)
 );
 
@@ -108,7 +108,7 @@ CREATE TABLE temporary_road_to_segment (
     driver_id UUID REFERENCES drivers(user_id) ON DELETE CASCADE,
     previous_segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE DEFAULT NULL,
     next_segment_hash text REFERENCES road_segments(segment_hash) ON DELETE CASCADE DEFAULT NULL,
-    getting_of_userId UUID REFERENCES users(user_id) ON DELETE SET NULL,
+    getting_off_userid UUID REFERENCES users(user_id) ON DELETE SET NULL,
     modified_by_passenger_id UUID NOT NULL REFERENCES passengers(user_id),
     status TEXT CHECK (status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
     request_id UUID DEFAULT NULL,
@@ -337,7 +337,7 @@ BEGIN
     FROM event_roads
     WHERE event_roads.road_id = v_road_id;
 
-    INSERT INTO road_to_segment (road_id, segment_hash, getting_of_userId)
+    INSERT INTO road_to_segment (road_id, segment_hash, getting_off_userid)
     VALUES (
         v_road_id,
         (SELECT segment_hash FROM fn_get_or_create_road(
@@ -363,12 +363,12 @@ DECLARE
 BEGIN
     SELECT road_id INTO v_road_id
     FROM road_to_segment
-    WHERE getting_of_userId = v_passenger_id;
+    WHERE getting_off_userid = v_passenger_id;
 
     SELECT segment_hash INTO passenger_segment_hash
     FROM road_to_segment
     WHERE road_id = v_road_id
-      AND getting_of_userId = v_passenger_id;
+      AND getting_off_userid = v_passenger_id;
 
     IF passenger_segment_hash IS NULL THEN
         RAISE EXCEPTION 'Passenger or their segment not found for the given road_id';
@@ -506,12 +506,12 @@ DECLARE
 BEGIN
     SELECT trs1.road_id INTO v_road_id
     FROM temporary_road_to_segment trs1
-    WHERE getting_of_userId = v_passenger_id;
+    WHERE getting_off_userid = v_passenger_id;
 
     SELECT trs2.segment_hash INTO passenger_segment_hash
     FROM temporary_road_to_segment trs2
     WHERE trs2.road_id = v_road_id
-      AND getting_of_userId = v_passenger_id;
+      AND getting_off_userid = v_passenger_id;
 
     IF passenger_segment_hash IS NULL THEN
         RAISE EXCEPTION 'Passenger or their segment not found for the given road_id';
@@ -633,7 +633,7 @@ BEGIN
     FROM road_to_segment
     WHERE segment_hash = v_segment_hash;
 
-    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_of_userId, modified_by_passenger_id)
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_off_userid, modified_by_passenger_id)
     VALUES (
         v_road_id,
         v_new_segment_hash_1,
@@ -643,19 +643,19 @@ BEGIN
         v_passenger_id,
         v_passenger_id
     );
-    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_of_userId, modified_by_passenger_id)
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_off_userid, modified_by_passenger_id)
     VALUES (
         v_road_id,
         v_new_segment_hash_2,
         (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
         v_new_segment_hash_1,
         (SELECT next_segment_hash FROM road_to_segment WHERE segment_hash = v_segment_hash),
-        (SELECT getting_of_userId FROM road_to_segment WHERE segment_hash = v_segment_hash),
+        (SELECT getting_off_userid FROM road_to_segment WHERE segment_hash = v_segment_hash),
         v_passenger_id
     );
 
-    INSERT INTO temporary_road_to_segment (road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_of_userId)
-    SELECT trs.road_id, trs.segment_hash, trs.previous_segment_hash, trs.next_segment_hash, trs.getting_of_userId
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_off_userid)
+    SELECT trs.road_id, trs.segment_hash, trs.previous_segment_hash, trs.next_segment_hash, trs.getting_off_userid
     FROM road_to_segment trs
     WHERE trs.road_id = v_road_id
       AND trs.segment_hash != v_segment_hash;
@@ -700,7 +700,7 @@ BEGIN
     FROM temporary_road_to_segment
     WHERE segment_hash = v_segment_hash;
 
-    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_of_userId, modified_by_passenger_id)
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_off_userid, modified_by_passenger_id)
     VALUES (
         v_road_id,
         v_new_segment_hash_1,
@@ -710,14 +710,14 @@ BEGIN
         v_passenger_id,
         v_passenger_id
     );
-    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_of_userId, modified_by_passenger_id)
+    INSERT INTO temporary_road_to_segment (road_id, segment_hash, driver_id, previous_segment_hash, next_segment_hash, getting_off_userid, modified_by_passenger_id)
     VALUES (
         v_road_id,
         v_new_segment_hash_2,
         (SELECT driver_id FROM event_roads WHERE road_id = v_road_id),
         v_new_segment_hash_1,
         (SELECT next_segment_hash FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash),
-        (SELECT getting_of_userId FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash),
+        (SELECT getting_off_userid FROM temporary_road_to_segment WHERE segment_hash = v_segment_hash),
         v_passenger_id
     );
 
@@ -743,5 +743,40 @@ BEGIN
         WHERE road_id = v_road_id;
 
     RETURN v_request_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_move_road_from_temporary_to_final(
+    v_request_id UUID
+) RETURNS VOID AS
+$$
+DECLARE
+    v_road_id UUID;
+BEGIN
+    SELECT road_id INTO v_road_id
+    FROM temporary_road_to_segment
+    WHERE request_id = v_request_id
+    LIMIT 1;
+
+    DELETE FROM road_to_segment
+    WHERE road_id = v_road_id;
+
+    INSERT INTO road_to_segment (road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_off_userid)
+    SELECT trts.road_id, trts.segment_hash, trts.previous_segment_hash, trts.next_segment_hash, trts.getting_off_userid
+    FROM temporary_road_to_segment trts
+    WHERE trts.road_id = v_road_id;
+
+    DELETE FROM temporary_road_to_segment
+    WHERE road_id = v_road_id;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION fn_delete_road_from_temporary(
+    v_request_id UUID
+) RETURNS VOID AS
+$$
+BEGIN
+    DELETE FROM fn_delete_road_from_temporary
+    WHERE request_id = v_request_id;
 END;
 $$ LANGUAGE plpgsql;

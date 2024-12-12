@@ -1,6 +1,7 @@
 import { Driver } from "~/models/driver.model";
 import { WithError } from "~/utils/utils.type";
 import { Request } from "express";
+import { getDriverById } from "~/repositories/driver.repository";
 
 
 export function validateDriver(req: Request): WithError<{ driverModel: Driver }, string> {
