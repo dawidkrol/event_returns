@@ -57,7 +57,7 @@ export async function createPassengerRoad(
     return { roadId };
 }
 
-export async function createPassengerRoadFromActiveRoad(roadId: string, passengerId: string): Promise<WithError<{roadId: string}, string>>
+export async function createPassengerRoadFromActiveRoad(roadId: string, passengerId: string): Promise<WithError<{requestId: string}, string>>
 {
     const { roadSegments, error: getRoadToSegmentsError } = await getRoadToSegments(roadId!);
     if (getRoadToSegmentsError) {
@@ -100,15 +100,18 @@ export async function createPassengerRoadFromActiveRoad(roadId: string, passenge
 
     const min_cost_segment_hash = Array.from(segment_cost_map.entries()).reduce((prev, curr) => prev[1].costDifference < curr[1].costDifference ? prev : curr);
 
-    const { error: addNewPropositionError } = await addNewPropositionToTmpTable(min_cost_segment_hash[0], min_cost_segment_hash[1].newSegments, passengerId);
+    const { requestId, error: addNewPropositionError } = await addNewPropositionToTmpTable(min_cost_segment_hash[0], min_cost_segment_hash[1].newSegments, passengerId);
     if (addNewPropositionError) {
         return {error: addNewPropositionError};
     }
+    if(!requestId) {
+        return { error: "Request not found" };
+    }
 
-    return { roadId };
+    return { requestId };
 }
 
-export async function createPassengerRoadFromTmpRoad(roadId: string, passengerId: string): Promise<WithError<{roadId: string}, string>>
+export async function createPassengerRoadFromTmpRoad(roadId: string, passengerId: string): Promise<WithError<{requestId: string}, string>>
 {
     const { roadSegments, error: getRoadToSegmentsError } = await getTmpRoadToSegments(roadId!);
     if (getRoadToSegmentsError) {
@@ -153,12 +156,15 @@ export async function createPassengerRoadFromTmpRoad(roadId: string, passengerId
 
     const min_cost_segment_hash = Array.from(segment_cost_map.entries()).reduce((prev, curr) => prev[1].costDifference < curr[1].costDifference ? prev : curr);
 
-    const { error: updatePropositionError } = await updatePropositionInTmpTable(min_cost_segment_hash[0], min_cost_segment_hash[1].newSegments, passengerId);
+    const { requestId, error: updatePropositionError } = await updatePropositionInTmpTable(min_cost_segment_hash[0], min_cost_segment_hash[1].newSegments, passengerId);
     if (updatePropositionError) {
         return {error: updatePropositionError};
     }
+    if(!requestId) {
+        return { error: "Request not found" };
+    }
 
-    return { roadId };
+    return { requestId };
 }
 
 export async function findOptimalRoad(
@@ -228,24 +234,24 @@ export async function setPassengerInSegment(
     return { segments };
 }
 
-export async function addNewPropositionToTmpTable(segmentHash: string, newSegments: Map<number, { segment: Segment; }>, passengerId: string): Promise<WithError<{roadId: string}, string>> {
-    const { roadId, error } = await addNewRouteProposition(segmentHash, newSegments.get(1)!.segment.segmentHash, newSegments.get(2)!.segment.segmentHash, passengerId);
+export async function addNewPropositionToTmpTable(segmentHash: string, newSegments: Map<number, { segment: Segment; }>, passengerId: string): Promise<WithError<{requestId: string}, string>> {
+    const { requestId, error } = await addNewRouteProposition(segmentHash, newSegments.get(1)!.segment.segmentHash, newSegments.get(2)!.segment.segmentHash, passengerId);
     if (error) {
         return {error};
     }
-    if (!roadId) {
+    if (!requestId) {
         return { error: "Road not found" };
     }
-    return { roadId };
+    return { requestId };
 }
 
-export async function updatePropositionInTmpTable(segmentHash: string, newSegments: Map<number, { segment: Segment; }>, passengerId: string): Promise<WithError<{roadId: string}, string>> {
-    const { roadId, error } = await updateRouteProposition(segmentHash, newSegments.get(1)!.segment.segmentHash, newSegments.get(2)!.segment.segmentHash, passengerId);
+export async function updatePropositionInTmpTable(segmentHash: string, newSegments: Map<number, { segment: Segment; }>, passengerId: string): Promise<WithError<{requestId: string}, string>> {
+    const { requestId, error } = await updateRouteProposition(segmentHash, newSegments.get(1)!.segment.segmentHash, newSegments.get(2)!.segment.segmentHash, passengerId);
     if (error) {
         return {error};
     }
-    if (!roadId) {
+    if (!requestId) {
         return { error: "Road not found" };
     }
-    return { roadId };
+    return { requestId };
 }

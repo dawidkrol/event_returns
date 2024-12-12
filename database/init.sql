@@ -111,8 +111,17 @@ CREATE TABLE temporary_road_to_segment (
     getting_of_userId UUID REFERENCES users(user_id) ON DELETE SET NULL,
     modified_by_passenger_id UUID NOT NULL REFERENCES passengers(user_id),
     status TEXT CHECK (status IN ('pending', 'accepted', 'rejected')) DEFAULT 'pending',
+    request_id UUID DEFAULT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     PRIMARY KEY (road_id, segment_hash)
+);
+
+-- ==========================================
+-- Tabela mapowania użytkowników na kanały (ws_users_channel_map)
+-- ==========================================
+CREATE TABLE ws_users_channel_map (
+    user_id UUID PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    channel TEXT NOT NULL
 );
 
 -- ==========================================
@@ -617,6 +626,7 @@ DECLARE
     v_road_id UUID;
     org_next_segment_hash TEXT;
     org_previous_segment_hash TEXT;
+    v_request_id UUID;
 BEGIN
     SELECT road_id, next_segment_hash, previous_segment_hash
     INTO v_road_id, org_next_segment_hash, org_previous_segment_hash
@@ -662,7 +672,13 @@ BEGIN
         WHERE segment_hash = org_next_segment_hash;
     END IF;
 
-    RETURN v_road_id;
+    SELECT gen_random_uuid() INTO v_request_id;
+
+    UPDATE temporary_road_to_segment
+        SET request_id = v_request_id
+        WHERE road_id = v_road_id;
+
+    RETURN v_request_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -677,6 +693,7 @@ DECLARE
     v_road_id UUID;
     v_previous_segment_hash TEXT;
     v_next_segment_hash TEXT;
+    v_request_id UUID;
 BEGIN
     SELECT road_id, next_segment_hash, previous_segment_hash
     INTO v_road_id, v_next_segment_hash, v_previous_segment_hash
@@ -719,6 +736,12 @@ BEGIN
     DELETE FROM temporary_road_to_segment
     WHERE segment_hash = v_segment_hash;
 
-    RETURN v_road_id;
+    SELECT gen_random_uuid() INTO v_request_id;
+
+    UPDATE temporary_road_to_segment
+        SET request_id = v_request_id
+        WHERE road_id = v_road_id;
+
+    RETURN v_request_id;
 END;
 $$ LANGUAGE plpgsql;
