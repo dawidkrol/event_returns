@@ -8,6 +8,7 @@ import { Passenger } from '~/models/passenger.model';
 import { getPersonById } from '~/repositories/user.repository';
 import { checkIfDriverExists } from '~/services/driver.service';
 import { checkIfRequestAndDriverAreConnected, checkIfRequestExists } from '~/services/road-decision.service';
+import { validateDecision } from '~/validators/decision.validator';
 
 export const roadDecision = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { requestId } = req.params;
@@ -25,7 +26,10 @@ export const roadDecision = catchAsync(async (req: Request, res: Response, next?
         return res.status(400).json({ error: 'header driverId must be a string' });
     }
 
-    console.log(`DriverId: ${driverId}, RequestId: ${requestId}, Decision: ${decision}`);
+    const { error: validateDecisionError } = validateDecision(decision);
+    if (validateDecisionError) {
+        return res.status(400).json({ error: validateDecisionError });
+    }
 
     const { exists: isDriverExists, error: driverExistsError } = await checkIfDriverExists(driverId);
     if(driverExistsError) {

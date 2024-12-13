@@ -6,7 +6,7 @@ import { setRoadDriver } from '~/controllers/setRoad.driver';
 import { getRoad } from '~/controllers/getRoad';
 import { setRoadPassenger } from '~/controllers/setRoad.passenger';
 import { getTempRoad } from '~/controllers/getTempRoad';
-import { roadDecision } from '~/controllers/roadDecision.driver';
+import { roadDecision } from '~/controllers/sendRoadDecision.driver';
 
 const router = Router();
 
