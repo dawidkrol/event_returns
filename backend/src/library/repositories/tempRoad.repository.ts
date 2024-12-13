@@ -16,7 +16,7 @@ export async function checkIfUserIsInTemporaryRoad(userId: string): Promise<{ is
     }
 }
 
-export async function getTempRoadPropsByUserId(userId: string): Promise<WithError<{geometry: any, roadLength: number, travelTime: number}, string>> {
+export async function getTempRoadPropsByUserId(userId: string): Promise<WithError<{geometry: any, roadLength: number, travelTime: any}, string>> {
     try {
         const result = await query(
             `SELECT ST_AsGeoJSON(geometry) AS geometry, road_length, travel_time FROM fn_get_temp_route($1);

@@ -86,6 +86,16 @@ export async function createPassengerRoad(
         return {error};
     }
 
+    const travelTimeMilisec = travelTime?.minutes * 60 * 1000 + travelTime?.seconds * 1000 + travelTime?.milliseconds;
+    const tempTravelTimeMilisec = tempTravelTime?.minutes * 60 * 1000 + tempTravelTime?.seconds * 1000 + tempTravelTime?.milliseconds;
+    const travelTimeDiffMilisec = tempTravelTimeMilisec - travelTimeMilisec;
+    const travelTimeDiff = {
+        hours: Math.floor(travelTimeDiffMilisec / (60 * 60 * 1000)),
+        minutes: Math.floor(travelTimeDiffMilisec / (60 * 1000)),
+        seconds: Math.floor((travelTimeDiffMilisec % (60 * 1000)) / 1000),
+        milliseconds: travelTimeDiffMilisec % 1000
+    }
+
     console.log("Sending message to driver", driverId);
     ws.sendMessageToDriver(driverId, JSON.stringify(
         { 
@@ -93,8 +103,8 @@ export async function createPassengerRoad(
             requestId, 
             new_passengers: 
                 [ passengers.map(passenger => ({ name: passenger.name, email: passenger.email })) ],
-            difference_route_length: (roadLength ?? 0) - (tempRoadLength ?? 0),
-            difference_route_time: (travelTime ?? 0) - (tempTravelTime ?? 0)
+            difference_route_length: (tempRoadLength ?? 0) - (roadLength ?? 0),
+            difference_route_time: travelTimeDiff
      }));
 
     return { requestId };

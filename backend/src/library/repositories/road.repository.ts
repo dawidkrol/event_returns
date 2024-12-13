@@ -52,14 +52,14 @@ export async function getRoadById(roadId: string): Promise<WithError<{road: { ty
     }
 }
 
-export async function getRoadPropsByUserId(userId: string): Promise<WithError<{geometry: any, roadLength: number, travelTime: number}, string>> {
+export async function getRoadPropsByUserId(userId: string): Promise<WithError<{geometry: any, roadLength: number, travelTime: any}, string>> {
     try {
         const result = await query(
             `SELECT ST_AsGeoJSON(geometry) AS geometry, road_length, travel_time FROM fn_get_passenger_route($1);
             `,
             [userId]
         );
-        return { geometry: result[0].geometry, roadLength: result[0].road_length, travelTime: result[0].travel_time };
+        return { geometry: result[0].geometry, roadLength: result[0].road_length as number, travelTime: result[0].travel_time };
 
     } catch (error: any) {
         console.error("Error executing query:", error);
