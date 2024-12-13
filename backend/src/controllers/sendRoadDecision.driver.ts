@@ -40,7 +40,7 @@ export const roadDecision = catchAsync(async (req: Request, res: Response, next?
         return res.status(404).json({ error: `Driver: ${driverId} not found` });
     }
 
-    var { exists: isRequestExists, error: requestExistsError } = await checkIfRequestExists(requestId);
+    const { exists: isRequestExists, error: requestExistsError } = await checkIfRequestExists(requestId);
     if(requestExistsError) {
         return res.status(500).json({ requestExistsError });
     }
@@ -48,7 +48,7 @@ export const roadDecision = catchAsync(async (req: Request, res: Response, next?
         return res.status(404).json({ error: `Request: ${requestId} not found` });
     }
 
-    var { connected: isDriverConnected, error: driverConnectedError } = await checkIfRequestAndDriverAreConnected(requestId, driverId);
+    const { connected: isDriverConnected, error: driverConnectedError } = await checkIfRequestAndDriverAreConnected(requestId, driverId);
     if(driverConnectedError) {
         return res.status(500).json({ driverConnectedError });
     }

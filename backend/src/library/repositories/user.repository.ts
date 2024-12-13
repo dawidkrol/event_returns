@@ -10,7 +10,7 @@ export async function addPerson(userModel: User, eventId: string, isOrganizer: b
             [userModel.email, userModel.name, eventId, isOrganizer]
         );
         return { id: data[0].user_id };
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error executing query:", error);
         return { error: error as Error };
     }
@@ -19,7 +19,7 @@ export async function addPerson(userModel: User, eventId: string, isOrganizer: b
 export async function getPeopleByEventId(eventId: string): Promise<WithError<{people: User[]}, Error>> {
     try {
         const data = await query(`SELECT * FROM users WHERE event_id = $1`, [eventId]);
-        const people = await Promise.all(data.map(async (person: any) => {
+        const people = await Promise.all(data.map(async (person) => {
             return {
                 email: person.person_email,
                 name: person.person_name,
@@ -27,7 +27,7 @@ export async function getPeopleByEventId(eventId: string): Promise<WithError<{pe
             } as User;
         }));
         return { people };
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error executing query:", error);
         return { error: error as Error };
     }
@@ -40,7 +40,7 @@ export async function getPersonById(personId: string): Promise<WithError<{ user:
             name: data[0].person_name,
             email: data[0].person_email
         }};
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error executing query:", error);
         return { error: error as Error };
     }

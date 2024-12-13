@@ -1,20 +1,35 @@
 import { query } from "~/utils/db";
 import { WithError } from "~/utils/utils.type";
 
-export async function createEventRoad(
-    userId: string,
-    startLongitude: number,
-    startLatitude: number,
-    endLongitude: number,
-    endLatitude: number,
-): Promise<WithError<{eventRoadId: string}, string>> {
-    try{
-    const eventRoadId = await query(`
-        SELECT fn_create_event_road($1, $2, $3, $4, $5)`,
-        [userId, startLongitude, startLatitude, endLongitude, endLatitude])
-    return {eventRoadId: eventRoadId[0].road_id};
-    } catch (err) {
-        console.error("Error executing function:", err);
-        return {error: "Error executing function"};
-    }
-}
+export async function createDriverRoad(
+    driverId: string
+  ): Promise<WithError<{roadId: string}, string>> {
+      try{
+    const road_id = await query(
+      'SELECT fn_create_event_road($1)',
+      [driverId]
+    );
+    return {roadId: road_id[0].fn_create_event_road};
+  }
+  catch (err) {
+      console.error("Error executing function:", err);
+      return {error: "Error executing function"};
+  }
+  
+  }
+  
+  export async function addSegmentToDriverRoad(
+    roadId: string
+  ): Promise<{error: string | null}> {
+      try{
+      await query(
+          'SELECT fn_add_first_segment_to_road($1)',
+          [roadId]
+      );
+      return {error: null};
+      }
+      catch (err) {
+          console.error("Error executing function:", err);
+          return {error: "Error executing function"};
+      }
+  }  

@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
-import { checkIfPointIsAvailable, checkIfUserIsInRoad, getRoadByUserId } from '~/repositories/road.repository';
+import { checkIfPointIsAvailable, checkIfUserIsInRoad } from '~/repositories/road.repository';
 import { validatePassenger } from '~/validators/passenger.validator';
-import { addPassenger, findPassengerById } from '~/repositories/passenger.repository';
-import { checkIfUserIsInTemporaryRoad, getTempRoadByUserId } from '~/repositories/tempRoad.repository';
+import { addPassenger } from '~/repositories/passenger.repository';
+import { checkIfUserIsInTemporaryRoad } from '~/repositories/tempRoad.repository';
 import { createPassengerRoad } from '~/services/passegner-road.service';
 import { getDriverById } from '~/repositories/driver.repository';
 import { checkIfUserExists } from '~/services/user.service';

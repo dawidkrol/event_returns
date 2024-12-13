@@ -33,7 +33,7 @@ public startWS(): http.Server<typeof http.IncomingMessage, typeof http.ServerRes
         ws.on('message', (message: string) => {
                 try{
                     console.log('Received message:', message.toString());
-                    const { userRole, userId } = JSON.parse(message.toString() as any);
+                    const { userRole, userId } = JSON.parse(message.toString());
                     console.log(`User with ID ${userId} and role ${userRole} connected`);
                 if(userRole === 'driver') {
                     this.drivers.set(userId, ws);

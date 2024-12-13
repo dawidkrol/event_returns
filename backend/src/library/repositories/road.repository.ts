@@ -145,26 +145,6 @@ export async function getRoadToSegmentsByRoadId(roadId: string): Promise<WithErr
     }
 }
 
-export async function getTmpRoadToSegmentsByRoadId(roadId: string): Promise<WithError<{ roadSegments: RoadToSegment[] }, string>> {
-  try {
-      const result = await query(
-          `SELECT road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_off_userid FROM temporary_road_to_segment WHERE road_id = $1;
-          `,
-          [roadId]
-      );
-      return { roadSegments: result.map((row: any) => ({
-          roadId: row.road_id,
-          segmentHash: row.segment_hash,
-          previousSegmentHash: row.previous_segment_hash,
-          nextSegmentHash: row.next_segment_hash,
-          gettingOffUserId: row.getting_off_userid,
-      })) };
-  } catch (error: any) {
-      console.error("Error executing query:", error);
-      return { error: error.message };
-  }
-}
-
 export async function getRoadSegment(segmentHash: string): Promise<WithError<{ segment: Segment }, string>> {
     try {
         const result = await query(

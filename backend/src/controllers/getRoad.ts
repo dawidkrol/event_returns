@@ -9,12 +9,12 @@ export const getRoad = catchAsync(async (req: Request, res: Response, next?: Nex
         return res.status(400).json({ error: 'userId is required' });
     }
 
-    var { error } = await checkIfUserExists(userId);
+    const { error } = await checkIfUserExists(userId);
     if(error) {
         return res.status(500).json({ error });
     }
 
-    var { road, error: roadNotFoundError } = await getRoadByUserId(userId);
+    const { road, error: roadNotFoundError } = await getRoadByUserId(userId);
     if (roadNotFoundError) {
         return res.status(404).json({ error: "Road not found" });
     }

@@ -4,8 +4,8 @@ import { Segment } from "~/models/segment.model";
 import { User } from "~/models/user.model";
 import { addPassengersToSeats } from "~/repositories/driver.repository";
 import { findPassengerById } from "~/repositories/passenger.repository";
-import { findNearestDriversRoad, getRoadPropsByUserId, getRoadSegment, getRoadToSegmentsByRoadId, getTmpRoadToSegmentsByRoadId, setPassengerInRoadSegment } from "~/repositories/road.repository";
-import { addNewRouteProposition, getNewPassengersIdByRequestId, getTempRoadPropsByUserId, updateRouteProposition } from "~/repositories/tempRoad.repository";
+import { findNearestDriversRoad, getRoadPropsByUserId, getRoadSegment, getRoadToSegmentsByRoadId, setPassengerInRoadSegment } from "~/repositories/road.repository";
+import { addNewRouteProposition, getNewPassengersIdByRequestId, getTempRoadPropsByUserId, getTmpRoadToSegmentsByRoadId, updateRouteProposition } from "~/repositories/tempRoad.repository";
 import { getPersonById } from "~/repositories/user.repository";
 import { WithError } from "~/utils/utils.type";
 
@@ -65,25 +65,25 @@ export async function createPassengerRoad(
         return { error: "Request not found" };
     }
 
-    var passengersIds = await getNewPassengersIdByRequestId(requestId);
+    const passengersIds = await getNewPassengersIdByRequestId(requestId);
     const passengers: User[] = await Promise.all(passengersIds.passengerId.map(async (passengerId) => {
         const { user, error } = await getPersonById(passengerId);
         if (error) {
             throw error;
         }
         return user!;
-    })).catch((error) => {
+    })).catch(() => {
         return [];
     });
 
-    var { roadLength, travelTime, error } = await getRoadPropsByUserId(driverId);
-    if (error) {
-        return {error};
+    const { roadLength, travelTime, error: getRoadPropsByUserIdError } = await getRoadPropsByUserId(driverId);
+    if (getRoadPropsByUserIdError) {
+        return {error: getRoadPropsByUserIdError};
     }
 
-    var { roadLength: tempRoadLength, travelTime: tempTravelTime, error } = await getTempRoadPropsByUserId(driverId);
-    if (error) {
-        return {error};
+    const { roadLength: tempRoadLength, travelTime: tempTravelTime, error: getTempRoadPropsByUserIdError } = await getTempRoadPropsByUserId(driverId);
+    if (getTempRoadPropsByUserIdError) {
+        return {error: getTempRoadPropsByUserIdError};
     }
 
     const travelTimeMilisec = travelTime?.minutes * 60 * 1000 + travelTime?.seconds * 1000 + travelTime?.milliseconds;
@@ -122,7 +122,7 @@ export async function createPassengerRoadFromActiveRoad(roadId: string, passenge
 
     const segment_cost_map = new Map<string, {costDifference: number, newSegments: Map<number, { segment: Segment; }>}>();
 
-    var currentSegment = roadSegments!.find(segment => segment.previousSegmentHash == null);
+    let currentSegment = roadSegments!.find(segment => segment.previousSegmentHash == null);
     for (;currentSegment != null && currentSegment != undefined;) {
         const { segment, error: getSegmentError } = await getSegment(currentSegment.segmentHash);
         if (getSegmentError) {
@@ -177,7 +177,7 @@ export async function createPassengerRoadFromTmpRoad(roadId: string, passengerId
 
     const segment_cost_map = new Map<string, {costDifference: number, newSegments: Map<number, { segment: Segment; }>}>();
 
-    var currentSegment = roadSegments!.find(segment => segment.previousSegmentHash == null);
+    let currentSegment = roadSegments!.find(segment => segment.previousSegmentHash == null);
     for (;currentSegment != null && currentSegment != undefined;) {
         const { segment, error: getSegmentError } = await getSegment(currentSegment.segmentHash);
         if (getSegmentError) {
@@ -205,8 +205,6 @@ export async function createPassengerRoadFromTmpRoad(roadId: string, passengerId
 
         currentSegment = roadSegments.find(segment => segment.previousSegmentHash === currentSegment?.segmentHash) || undefined;
     }
-
-    console.log("segment_cost_map", JSON.stringify(segment_cost_map.entries()));
 
     const min_cost_segment_hash = Array.from(segment_cost_map.entries()).reduce((prev, curr) => prev[1].costDifference < curr[1].costDifference ? prev : curr);
 
@@ -290,7 +288,6 @@ export async function setPassengerInSegment(
 
 export async function addNewPropositionToTmpTable(roadId: string, segmentHash: string, newSegments: Map<number, { segment: Segment; }>, passengerId: string): Promise<WithError<{requestId: string}, string>> {
     const { requestId, error } = await addNewRouteProposition(segmentHash, newSegments.get(1)!.segment.segmentHash, newSegments.get(2)!.segment.segmentHash, passengerId, roadId);
-    console.log("addNewPropositionToTmpTable", requestId, error);
     if (error) {
         return {error};
     }
