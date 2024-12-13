@@ -4,7 +4,8 @@ import { validateDriver } from '~/validators/driver.validator';
 import { checkIfUserExists } from '~/validators/user.validator';
 import { addDriver } from '~/repositories/driver.repository';
 import { addSegmentToDriverRoad, createDriverRoad } from '~/services/driver-road.service';
-import { checkIfPointIsAvailable, getRoadByUserId } from '~/repositories/road.repository';
+import { checkIfPointIsAvailable, checkIfUserIsInRoad, getRoadByUserId } from '~/repositories/road.repository';
+import { findPassengerById } from '~/repositories/passenger.repository';
 
 export const setRoadDriver = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { userId } = req.params;
@@ -22,12 +23,25 @@ export const setRoadDriver = catchAsync(async (req: Request, res: Response, next
         return res.status(404).json({ error: "User not found" });
     }
 
+    const { passenger, error: findPassengerByIdError } = await findPassengerById(userId);
+    if (findPassengerByIdError) {
+        return res.status(500).json({ error: "Error fetching passengers" });
+    }
+    if (passenger) {
+        return res.status(400).json({ error: "User is already a passenger" });
+    }
+
     const { isAvailable, error: isAvailableError } = await checkIfPointIsAvailable(driverModel!.longitude, driverModel!.latitude);
     if(isAvailableError) {
         return res.status(500).json({ error: isAvailableError });
     }
     if(!isAvailable) {
         return res.status(400).json({ error: "Location is not avaliable" });
+    }
+
+    const { isUserInRoad } = await checkIfUserIsInRoad(userId);
+    if(isUserInRoad) {
+        return res.status(400).json({ error: "User already has a road" });
     }
 
     const { error: driverAddError } = await addDriver(driverModel!);
