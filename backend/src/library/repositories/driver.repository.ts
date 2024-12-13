@@ -1,3 +1,4 @@
+import exp from "constants";
 import { Driver } from "~/models/driver.model";
 import { query } from "~/utils/db";
 import { WithError } from "~/utils/utils.type";
@@ -67,6 +68,62 @@ export async function getDriverById(driverId: string): Promise<WithError<{driver
             finalDepartureTime: result[0].final_departure_time,
             numberOfAvailableSeats: result[0].number_of_available_seats
         } };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function changeNumberOfAvailableSeats(driverId: string, numberOfSeats: number): Promise<{ error: string | null }> {
+    try {
+        await query(
+            `UPDATE drivers
+            SET number_of_available_seats = $2
+            WHERE user_id = $1`,
+            [driverId, numberOfSeats]
+        );
+        return { error: null };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function changeNumberOfAvailablePassengers(driverId: string, numberOfPassengers: number): Promise<{ error: string | null }> {
+    try {
+        await query(
+            `UPDATE drivers
+            SET number_of_available_passengers = $2
+            WHERE user_id = $1`,
+            [driverId, numberOfPassengers]
+        );
+        return { error: null };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function getNumberOfAvailablePassengers(driverId: string): Promise<WithError<{numberOfPassengers: number | null}, string>> {
+    try {
+        const result = await query(
+            `SELECT number_of_available_passengers FROM drivers WHERE user_id = $1`,
+            [driverId]
+        );
+        return { numberOfPassengers: result[0]?.number_of_available_passengers };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function getNumberOfAvailableSeats(driverId: string): Promise<WithError<{numberOfSeats: number | null}, string>> {
+    try {
+        const result = await query(
+            `SELECT number_of_available_seats FROM drivers WHERE user_id = $1`,
+            [driverId]
+        );
+        return { numberOfSeats: result[0]?.number_of_available_seats };
     } catch (error: any) {
         console.error("Error executing query:", error);
         return { error: error.message };
