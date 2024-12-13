@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
-import { checkIfUserExists } from '~/validators/user.validator';
 import { getTempRoadByUserId } from '~/repositories/tempRoad.repository';
+import { checkIfUserExists } from '~/services/user.service';
 
 export const getTempRoad = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { userId } = req.params;

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
-import { checkIfUserExists } from '~/validators/user.validator';
 import { getRoadByUserId } from '~/repositories/road.repository';
+import { checkIfUserExists } from '~/services/user.service';
 
 export const getRoad = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { userId } = req.params;

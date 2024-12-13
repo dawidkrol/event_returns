@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
-import { checkIfUserExists } from '~/validators/user.validator';
 import { checkIfPointIsAvailable, checkIfUserIsInRoad, getRoadByUserId } from '~/repositories/road.repository';
 import { validatePassenger } from '~/validators/passenger.validator';
 import { addPassenger, findPassengerById } from '~/repositories/passenger.repository';
 import { checkIfUserIsInTemporaryRoad, getTempRoadByUserId } from '~/repositories/tempRoad.repository';
 import { createPassengerRoad } from '~/services/passegner-road.service';
 import { getDriverById } from '~/repositories/driver.repository';
+import { checkIfUserExists } from '~/services/user.service';
 
 export const setRoadPassenger = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { userId } = req.params;

@@ -2,7 +2,6 @@ import { Passenger } from "~/models/passenger.model";
 import { WithError } from "~/utils/utils.type";
 import { Request } from "express";
 
-
 export function validatePassenger(req: Request): WithError<{ passengerModel: Passenger }, string> {
     const { longitude, latitude, numberOfPeople, initialDepartureTime, finalDepartureTime } = req.body;
     if (longitude == null || latitude == null || numberOfPeople == null || !initialDepartureTime || !finalDepartureTime) {

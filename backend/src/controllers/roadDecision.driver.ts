@@ -1,13 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
-import { checkIfRequestAndDriverAreConnected, checkIfRequestExists } from '~/validators/roadDecision.validator';
-import { checkIfDriverExists } from '~/validators/driver.validator';
 import { deleteRouteProposition, getNewPassengersIdByRequestId, moveRoadFromTemporaryToFinal } from '~/repositories/tempRoad.repository';
 import { removePassengersFromSeats } from '~/repositories/driver.repository';
 import { ws } from 'src/server';
 import { findPassengerById } from '~/repositories/passenger.repository';
 import { Passenger } from '~/models/passenger.model';
 import { getPersonById } from '~/repositories/user.repository';
+import { checkIfDriverExists } from '~/services/driver.service';
+import { checkIfRequestAndDriverAreConnected, checkIfRequestExists } from '~/services/road-decision.service';
 
 export const roadDecision = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { requestId } = req.params;
