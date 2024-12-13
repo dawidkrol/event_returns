@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
 import { checkIfRequestAndDriverAreConnected, checkIfRequestExists } from '~/validators/roadDecision.validator';
 import { checkIfDriverExists } from '~/validators/driver.validator';
-import { deleteRouteProposition, getPassengersIdByRequestId, moveRoadFromTemporaryToFinal } from '~/repositories/tempRoad.repository';
+import { deleteRouteProposition, getNewPassengersIdByRequestId, moveRoadFromTemporaryToFinal } from '~/repositories/tempRoad.repository';
 import { removePassengersFromSeats } from '~/repositories/driver.repository';
 import { ws } from 'src/server';
 import { findPassengerById } from '~/repositories/passenger.repository';
@@ -51,7 +51,7 @@ export const roadDecision = catchAsync(async (req: Request, res: Response, next?
         return res.status(401).json({ error: `Driver: ${driverId} and Request: ${requestId} are not connected` });
     }
 
-    var passengersIds = await getPassengersIdByRequestId(requestId);
+    var passengersIds = await getNewPassengersIdByRequestId(requestId);
     const passengers: Passenger[] = await Promise.all(passengersIds.passengerId.map(async (passengerId) => {
         const { passenger, error } = await findPassengerById(passengerId);
         if (error) {

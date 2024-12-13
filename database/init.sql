@@ -344,7 +344,11 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION fn_get_passenger_route(
     v_passenger_id UUID
-) RETURNS GEOMETRY AS
+) RETURNS TABLE(
+    geometry GEOMETRY(MultiLineString, 4326),
+    road_length DOUBLE PRECISION,
+    travel_time INTERVAL
+) AS
 $$
 DECLARE
     current_segment_hash TEXT;
@@ -399,7 +403,16 @@ BEGIN
         END IF;
     END LOOP;
 
-    RETURN ST_Multi(aggregated_geometry)::GEOMETRY(MultiLineString, 4326);
+    RETURN QUERY SELECT
+        ST_Multi(aggregated_geometry)::GEOMETRY(MultiLineString, 4326) as geometry,
+        ST_Length(aggregated_geometry) as road_length,
+        SUM(rs.travel_time) as travel_time
+    FROM road_segments rs
+    WHERE rs.segment_hash IN (
+        SELECT segment_hash
+        FROM road_to_segment
+        WHERE road_id = v_road_id
+    );
 END;
 $$ LANGUAGE plpgsql;
 
@@ -487,7 +500,11 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION fn_get_temp_route(
     v_passenger_id UUID
-) RETURNS GEOMETRY AS
+) RETURNS TABLE(
+    geometry GEOMETRY(MultiLineString, 4326),
+    road_length DOUBLE PRECISION,
+    travel_time INTERVAL
+) AS
 $$
 DECLARE
     current_segment_hash TEXT;
@@ -546,7 +563,16 @@ BEGIN
         END IF;
     END LOOP;
 
-    RETURN ST_Multi(aggregated_geometry)::GEOMETRY(MultiLineString, 4326);
+    RETURN QUERY SELECT
+        ST_Multi(aggregated_geometry)::GEOMETRY(MultiLineString, 4326) as geometry,
+        ST_Length(aggregated_geometry) as road_length,
+        SUM(rs.travel_time) as travel_time
+    FROM road_segments rs
+    WHERE rs.segment_hash IN (
+        SELECT segment_hash
+        FROM temporary_road_to_segment
+        WHERE road_id = v_road_id
+    );
 END;
 $$ LANGUAGE plpgsql;
 

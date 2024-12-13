@@ -16,22 +16,35 @@ export async function checkIfUserIsInTemporaryRoad(userId: string): Promise<{ is
     }
 }
 
-export async function getTempRoadByUserId(userId: string): Promise<WithError<{road: { type: string; features: any }}, string>> {
+export async function getTempRoadPropsByUserId(userId: string): Promise<WithError<{geometry: any, roadLength: number, travelTime: number}, string>> {
     try {
         const result = await query(
-            `SELECT ST_AsGeoJSON(fn_get_temp_route) AS geometry FROM fn_get_temp_route($1);
+            `SELECT ST_AsGeoJSON(geometry) AS geometry, road_length, travel_time FROM fn_get_temp_route($1);
             `,
             [userId]
         );
+        return { geometry: result[0].geometry, roadLength: result[0].road_length, travelTime: result[0].travel_time };
+
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
+}
+
+export async function getTempRoadByUserId(userId: string): Promise<WithError<{road: { type: string; features: any }}, string>> {
+    try {
+        const result = await getTempRoadPropsByUserId(userId);
         const geoJSON = {
           type: "FeatureCollection",
-          features: result.map((row: any) => ({
-            type: "Feature",
-            geometry: JSON.parse(row.geometry),
-            properties: {
-              passengerId: userId,
-            },
-          })),
+            features: [{
+                type: "Feature",
+                geometry: JSON.parse(result.geometry),
+                properties: {
+                passengerId: userId,
+                length: result.roadLength,
+                travelTime: result.travelTime,
+                },
+            }],
         };
       return { road: geoJSON };
 
@@ -152,7 +165,7 @@ export async function deleteRouteProposition(requestId: string): Promise<void> {
     }
 }
 
-export async function getPassengersIdByRequestId(requestId: string): Promise<{ passengerId: string[] }> {
+export async function getNewPassengersIdByRequestId(requestId: string): Promise<{ passengerId: string[] }> {
     try {
         const result = await query(
             `SELECT DISTINCT modified_by_passenger_id FROM temporary_road_to_segment WHERE request_id = $1;
