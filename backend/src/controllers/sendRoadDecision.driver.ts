@@ -80,12 +80,12 @@ export const roadDecision = catchAsync(async (req: Request, res: Response, next?
 async function fetchPassengers(passengerIds: string[]): Promise<WithError<{passengers: Passenger[]}, string>> {
     try {
         return {
-                passengers: await Promise.all(passengerIds.map(async (passengerId) => {
-                    const { passenger, error } = await findPassengerById(passengerId);
-                    if (error) {
-                        throw new Error(error);
-                    }
-                    return passenger!;
+            passengers: await Promise.all(passengerIds.map(async (passengerId) => {
+                const { passenger, error } = await findPassengerById(passengerId);
+                if (error) {
+                    throw new Error(error);
+                }
+                return passenger!;
             }))
         };
     } catch (error) {

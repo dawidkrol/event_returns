@@ -10,7 +10,7 @@ import { getPersonById } from "~/repositories/user.repository";
 import { WithError } from "~/utils/utils.type";
 
 export async function createPassengerRoad(
-  passengerId: string
+    passengerId: string
 ): Promise<WithError<{requestId: string}, string>> {
     const { roadId, driverId, error: optimalRoadError } = await findOptimalRoad(passengerId);
     let requestId: string | undefined = undefined;
@@ -105,7 +105,7 @@ export async function createPassengerRoad(
                 [ passengers.map(passenger => ({ name: passenger.name, email: passenger.email })) ],
             difference_route_length: (tempRoadLength ?? 0) - (roadLength ?? 0),
             difference_route_time: travelTimeDiff
-     }));
+        }));
 
     return { requestId };
 }
@@ -144,9 +144,9 @@ export async function createPassengerRoadFromActiveRoad(roadId: string, passenge
         segment_cost_map.set(
             currentSegment.segmentHash,
             {
-            costDifference: cost - segment.cost.totalMilliseconds,
-            newSegments: newSegments
-        });
+                costDifference: cost - segment.cost.totalMilliseconds,
+                newSegments: newSegments
+            });
 
         currentSegment = roadSegments.find(segment => segment.previousSegmentHash === currentSegment?.segmentHash) || undefined;
     }
@@ -199,9 +199,9 @@ export async function createPassengerRoadFromTmpRoad(roadId: string, passengerId
         segment_cost_map.set(
             currentSegment.segmentHash,
             {
-            costDifference: cost - segment.cost.totalMilliseconds,
-            newSegments: newSegments
-        });
+                costDifference: cost - segment.cost.totalMilliseconds,
+                newSegments: newSegments
+            });
 
         currentSegment = roadSegments.find(segment => segment.previousSegmentHash === currentSegment?.segmentHash) || undefined;
     }
@@ -220,7 +220,7 @@ export async function createPassengerRoadFromTmpRoad(roadId: string, passengerId
 }
 
 export async function findOptimalRoad(
-  passengerId: string
+    passengerId: string
 ): Promise<WithError<{roadId: string, driverId: string}, string>> {
     const {roadId, driverId, error} = await findNearestDriversRoad(passengerId);
     if (error) {
