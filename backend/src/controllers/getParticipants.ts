@@ -8,7 +8,7 @@ export const getParticipant = catchAsync(async (req: Request, res: Response, nex
         return res.status(400).json({ error: 'eventId is required' });
     }
 
-    var { people, error } = await getPeopleByEventId(eventId as string);
+    var { people, error } = await getPeopleByEventId(eventId);
     if(error) {
         return res.status(500).json({ error });
     }

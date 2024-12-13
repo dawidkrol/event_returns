@@ -11,12 +11,12 @@ export const createEvent = catchAsync(async (req: Request, res: Response, next?:
         return res.status(400).json({ error });
     }
 
-    const { isAvailable, error: isAvaliableError } = await checkIfPointIsAvailable(eventModel!.longitude, eventModel!.latitude);
-    if(isAvaliableError) {
-        return res.status(500).json({ error: isAvaliableError });
+    const { isAvailable, error: isAvailableError } = await checkIfPointIsAvailable(eventModel!.longitude, eventModel!.latitude);
+    if(isAvailableError) {
+        return res.status(500).json({ error: isAvailableError });
     }
     if(!isAvailable) {
-        return res.status(400).json({ error: "Location is not avaliable" });
+        return res.status(400).json({ error: "Location is not available" });
     }
 
     const{ error: databaseError, id: eventId } = await repoCreateEvent(eventModel!);
