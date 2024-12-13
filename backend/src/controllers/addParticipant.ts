@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
 import { validateUser } from '~/validators/user.validator';
 import { addPerson } from '~/repositories/user.repository';
-import { checkIfEventExists } from '~/validators/event.validator';
+import { checkIfEventExists } from '~/services/event.service';
 
 export const addParticipant = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { eventId } = req.params;

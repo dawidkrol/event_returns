@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { catchAsync } from '../library/utils/catchAsync';
 import { validateDriver } from '~/validators/driver.validator';
-import { checkIfUserExists } from '~/validators/user.validator';
 import { addDriver } from '~/repositories/driver.repository';
-import { addSegmentToDriverRoad, createDriverRoad } from '~/services/driver-road.service';
 import { checkIfPointIsAvailable, checkIfUserIsInRoad, getRoadByUserId } from '~/repositories/road.repository';
 import { findPassengerById } from '~/repositories/passenger.repository';
+import { checkIfUserExists } from '~/services/user.service';
+import { addSegmentToDriverRoad, createDriverRoad } from '~/repositories/event-road.repository';
 
 export const setRoadDriver = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { userId } = req.params;

@@ -1,3 +1,4 @@
+import { RoadToSegment } from "~/models/road-to-segment.model";
 import { query } from "~/utils/db";
 import { WithError } from "~/utils/utils.type";
 
@@ -10,7 +11,7 @@ export async function checkIfUserIsInTemporaryRoad(userId: string): Promise<{ is
         );
         return { isUserInTemporaryRoad: result.length > 0 };
 
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error executing query:", error);
         return { isUserInTemporaryRoad: false };
     }
@@ -35,23 +36,23 @@ export async function getTempRoadByUserId(userId: string): Promise<WithError<{ro
     try {
         const result = await getTempRoadPropsByUserId(userId);
         const geoJSON = {
-          type: "FeatureCollection",
+            type: "FeatureCollection",
             features: [{
                 type: "Feature",
                 geometry: JSON.parse(result.geometry),
                 properties: {
-                passengerId: userId,
-                length: result.roadLength,
-                travelTime: result.travelTime,
+                    passengerId: userId,
+                    length: result.roadLength,
+                    travelTime: result.travelTime,
                 },
             }],
         };
-      return { road: geoJSON };
+        return { road: geoJSON };
 
-  } catch (error: any) {
-      console.error("Error executing query:", error);
-      return { error: error.message };
-  }
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
+    }
 }
 
 export async function addNewRouteProposition(
@@ -66,11 +67,11 @@ export async function addNewRouteProposition(
             `SELECT add_new_route_proposition($1, $2, $3, $4, $5);
             `,
             [
-              segmentId_hash, 
-              newSegment_hash_1,
-              newSegment_hash_2, 
-              passengerId, 
-              roadId
+                segmentId_hash, 
+                newSegment_hash_1,
+                newSegment_hash_2, 
+                passengerId, 
+                roadId
             ]
         );
         console.log(result);
@@ -94,11 +95,11 @@ export async function updateRouteProposition(
             `SELECT fn_update_route_proposition($1, $2, $3, $4, $5);
             `,
             [
-              segmentId_hash, 
-              newSegment_hash_1,
-              newSegment_hash_2, 
-              passengerId,
-              roadId
+                segmentId_hash, 
+                newSegment_hash_1,
+                newSegment_hash_2, 
+                passengerId,
+                roadId
             ]
         );
         return { requestId: result[0].fn_update_route_proposition };
@@ -176,5 +177,25 @@ export async function getNewPassengersIdByRequestId(requestId: string): Promise<
     } catch (error: any) {
         console.error("Error executing query:", error);
         return { passengerId: [] };
+    }
+}
+
+export async function getTmpRoadToSegmentsByRoadId(roadId: string): Promise<WithError<{ roadSegments: RoadToSegment[] }, string>> {
+    try {
+        const result = await query(
+            `SELECT road_id, segment_hash, previous_segment_hash, next_segment_hash, getting_off_userid FROM temporary_road_to_segment WHERE road_id = $1;
+          `,
+            [roadId]
+        );
+        return { roadSegments: result.map((row: any) => ({
+            roadId: row.road_id,
+            segmentHash: row.segment_hash,
+            previousSegmentHash: row.previous_segment_hash,
+            nextSegmentHash: row.next_segment_hash,
+            gettingOffUserId: row.getting_off_userid,
+        })) };
+    } catch (error: any) {
+        console.error("Error executing query:", error);
+        return { error: error.message };
     }
 }

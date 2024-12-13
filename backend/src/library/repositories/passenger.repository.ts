@@ -38,7 +38,7 @@ export async function findPassengerById(passengerId: string): Promise<WithError<
                 initialDepartureTime: result[0].initial_departure_time,
                 finalDepartureTime: result[0].final_departure_time,
             }
-         };
+        };
     } catch (error: any) {
         console.error("Error executing query:", error);
         return { error: error.message };
