@@ -51,6 +51,7 @@ PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -p "5432" -U "$POSTGRES
 
 if [ $? -eq 0 ]; then
     echo "OSM data successfully imported."
+    exit 0
 else
     echo "Error: Failed to import OSM data."
     exit 1

@@ -6,7 +6,9 @@ export async function addPassenger(passegnerModel: Passenger): Promise<{ error: 
     try {
         await query(
             `INSERT INTO passengers (user_id, longitude, latitude, number_of_people, initial_departure_time, final_departure_time) 
-            VALUES ($1, $2, $3, $4, $5, $6)`,
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (user_id) DO UPDATE SET
+            longitude = $2, latitude = $3, number_of_people = $4, initial_departure_time = $5, final_departure_time = $6`,
             [passegnerModel.userId, passegnerModel.longitude, passegnerModel.latitude, passegnerModel.numberOfPeople, passegnerModel.initialDepartureTime, passegnerModel.finalDepartureTime]
         );
         return { error: null };

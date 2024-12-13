@@ -6,7 +6,9 @@ export async function addDriver(driverModel: Driver): Promise<{ error: Error | n
     try {
         await query(
             `INSERT INTO drivers (user_id, latitude, longitude, initial_departure_time, final_departure_time, number_of_available_seats, number_of_available_passengers)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (user_id) DO UPDATE SET
+            latitude = $2, longitude = $3, initial_departure_time = $4, final_departure_time = $5, number_of_available_seats = $6, number_of_available_passengers = $7`,
             [driverModel.userId, driverModel.latitude, driverModel.longitude, driverModel.initialDepartureTime, driverModel.finalDepartureTime, driverModel.numberOfAvailableSeats, driverModel.numberOfAvailableSeats]
         );
         return { error: null };
@@ -46,12 +48,17 @@ export async function removePassengersFromSeats(driverId: string, numberOfPassen
     }
 }
 
-export async function getDriverById(driverId: string): Promise<WithError<{driver: Driver}, string>> {
+export async function getDriverById(driverId: string): Promise<WithError<{driver: Driver | null}, string>> {
     try {
         const result = await query(
             `SELECT user_id, latitude, longitude, initial_departure_time, final_departure_time, number_of_available_seats FROM drivers WHERE user_id = $1`,
             [driverId]
         );
+
+        if (result.length === 0) {
+            return { driver: null };
+        }
+        
         return { driver: {
             userId: result[0].user_id,
             latitude: result[0].latitude,

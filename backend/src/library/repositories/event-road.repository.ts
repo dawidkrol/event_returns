@@ -17,5 +17,4 @@ export async function createEventRoad(
         console.error("Error executing function:", err);
         return {error: "Error executing function"};
     }
-
 }

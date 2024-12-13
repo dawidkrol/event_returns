@@ -6,6 +6,7 @@ import { validatePassenger } from '~/validators/passenger.validator';
 import { addPassenger, findPassengerById } from '~/repositories/passenger.repository';
 import { checkIfUserIsInTemporaryRoad, getTempRoadByUserId } from '~/repositories/tempRoad.repository';
 import { createPassengerRoad } from '~/services/passegner-road.service';
+import { getDriverById } from '~/repositories/driver.repository';
 
 export const setRoadPassenger = catchAsync(async (req: Request, res: Response, next?: NextFunction) => {
     const { userId } = req.params;
@@ -23,6 +24,14 @@ export const setRoadPassenger = catchAsync(async (req: Request, res: Response, n
         return res.status(404).json({ error: "User not found" });
     }
 
+    const { driver, error: findPassengerByIdError } = await getDriverById(userId);
+    if (findPassengerByIdError) {
+        return res.status(500).json({ error: "Error fetching driver" });
+    }
+    if (driver) {
+        return res.status(400).json({ error: "User is already a driver" });
+    }
+    
     const { isAvailable, error: isAvailableError } = await checkIfPointIsAvailable(passengerModel!.longitude, passengerModel!.latitude);
     if(isAvailableError) {
         return res.status(500).json({ error: isAvailableError });
@@ -41,16 +50,9 @@ export const setRoadPassenger = catchAsync(async (req: Request, res: Response, n
         return res.status(400).json({ error: "User already has a road" });
     }
 
-    const { passenger, error: findPassengerByIdError } = await findPassengerById(userId);
-    if(findPassengerByIdError) {
-        return res.status(500).json({ error: findPassengerByIdError });
-    }
-
-    if(!passenger) {
-        const { error: driverAddError } = await addPassenger(passengerModel!);
-        if (driverAddError) {
-            return res.status(500).json({ error: "Error adding driver" });
-        }
+    const { error: driverAddError } = await addPassenger(passengerModel!);
+    if (driverAddError) {
+        return res.status(500).json({ error: "Error adding driver" });
     }
 
     const { requestId, error: roadError } = await createPassengerRoad(passengerModel!.userId);
